@@ -2,6 +2,7 @@
 #include <Wire.h>
 #include <Adafruit_MLX90614.h>
 #include <max6675.h>
+#include <LiquidCrystal_I2C.h>
 
 unsigned long time;
 unsigned long timeForOtherStuff;
@@ -57,8 +58,8 @@ String order;
 
 bool startVentTermogen = false;
 bool startMixer = false;
-float tempOfThermogen;
-float tempOfSeed;
+double tempOfThermogen;
+double tempOfSeed;
 bool kosticePostigleTemp = false;
 
 char receivedChar;
@@ -67,6 +68,7 @@ bool newData = false;
 MAX6675 thermocouple(thermoCLK, thermoCS, thermoDO);
 Adafruit_MLX90614 mlx = Adafruit_MLX90614();
 
+LiquidCrystal_I2C lcd(0x27,20,4);  // set the LCD address to 0x27 for a 16 chars and 2 line display
 void goLeft(){
   digitalWrite(goToRight, LOW);
   startLeft = true;
@@ -87,6 +89,7 @@ void goRight(){
 }
 
 void setup() {
+  lcd.init(); 
   pinMode(termogenSide, INPUT);
   pinMode(goreSide, INPUT);
   pinMode(goToLeft, OUTPUT);
@@ -194,7 +197,7 @@ void loop() {
     tempOfThermogen = thermocouple.readCelsius();
     Serial.print(thermocouple.readCelsius());
 
-    float tempOfSeed = mlx.readAmbientTempC();
+    tempOfSeed = mlx.readAmbientTempC();
     // check if returns are valid, if they are NaN (not a number) then something went wrong!
     if (isnan(tempOfSeed) || isnan(tempOfThermogen)) 
     {
@@ -227,7 +230,7 @@ void loop() {
     }
     //logic to find out when to shutdown dryer
     if(numberOfShutdowns >= 5){
-      if(timeOfBurnerShutdown[numberOfShutdowns - 1] - numberOfShutdowns[numberOfShutdowns - 5] < 3600000){
+      if(timeOfBurnerShutdown[numberOfShutdowns - 1] - timeOfBurnerShutdown[numberOfShutdowns - 5] < 3600000){
         startDrying = false;
         stopDrying = true;
         doneBooting = false;
