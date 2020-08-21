@@ -1,0 +1,39 @@
+{
+    "name": "LiquidMenu", 
+    "version": "1.5.0", 
+    "keywords": [
+        "display"
+    ], 
+    "description": "Menu creation Arduino library for LCDs, wraps LiquidCrystal.", 
+    "frameworks": [
+        "arduino"
+    ], 
+    "platforms": [
+        "atmelavr"
+    ], 
+    "authors": [
+        {
+            "email": "vase7u@gmail.com", 
+            "url": null, 
+            "maintainer": true, 
+            "name": "Vasil Kalchev"
+        }
+    ], 
+    "repository": {
+        "type": "git", 
+        "url": "https://github.com/VasilKalchev/LiquidMenu"
+    }, 
+    "homepage": "https://github.com/VaSe7u/LiquidMenu", 
+    "export": {
+        "include": null, 
+        "exclude": [
+            "extras", 
+            "docs", 
+            "tests", 
+            "test", 
+            "*.doxyfile", 
+            "*.pdf"
+        ]
+    }, 
+    "id": 671
+}
