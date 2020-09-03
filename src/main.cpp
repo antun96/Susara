@@ -45,6 +45,9 @@ bool firstTimeMixer = false;
 bool goreSideAttachedInterrupt = false;
 bool termogenSideAttachedInterrupt = false;
 
+bool goreSideWatch = false;
+bool termogenSideWatch = false;
+
 unsigned long timeForOtherStuffInterval = 5000;
 unsigned long timeInterval = 2000;
 unsigned long timeForSerialResetInterval = 100;
@@ -323,8 +326,10 @@ void goLeftInterruptMethod(){
     startLeft = true;
     time = millis();
     timeChangeDirection = millis();
-    detachInterrupt(digitalPinToInterrupt(termogenSide));
+
+    //detachInterrupt(digitalPinToInterrupt(termogenSide));
     termogenSideAttachedInterrupt = false;
+
     // Serial.print("lijevo ");
     // Serial.println(turnCount);
     // turnCount++;
@@ -345,8 +350,10 @@ void goRightInterruptMethod(){
     startRight = true;
     time = millis();
     timeChangeDirection = millis();
-    detachInterrupt(digitalPinToInterrupt(goreSide));
+
+    //detachInterrupt(digitalPinToInterrupt(goreSide));
     goreSideAttachedInterrupt = false;
+
     // Serial.print("desno ");
     // Serial.println(turnCount);
     //turnCount++;
@@ -428,8 +435,8 @@ void setup() {
   pinMode(mjesalicaSwitch, OUTPUT);
   // pinMode(goLeftInterruptMethod, INPUT);
   // pinMode(goRightInterruptMethod, INPUT);
-  attachInterrupt(digitalPinToInterrupt(termogenSide), goLeftInterruptMethod, FALLING);
-  attachInterrupt(digitalPinToInterrupt(goreSide), goRightInterruptMethod, FALLING);
+  //attachInterrupt(digitalPinToInterrupt(termogenSide), goLeftInterruptMethod, FALLING);
+  //attachInterrupt(digitalPinToInterrupt(goreSide), goRightInterruptMethod, FALLING);
   
   digitalWrite(goToLeft, LOW);
   digitalWrite(goToRight, LOW);
@@ -446,7 +453,7 @@ void setup() {
 void loop() {
 
 
-  receivedChar = Serial.read();
+  //receivedChar = Serial.read();
   //receive command for start
   if(receivedChar == 's'){
     if(startDrying == false){
@@ -646,13 +653,15 @@ void loop() {
   }
 
   if(directionChangeToLeft == true && 500 <= millis() - timeFromLastDirectionChange){
-    attachInterrupt(digitalPinToInterrupt(goreSide), goRightInterruptMethod, FALLING);
+    goreSideWatch = true;
+    //attachInterrupt(digitalPinToInterrupt(goreSide), goRightInterruptMethod, FALLING);
     goreSideAttachedInterrupt = true;
     directionChangeToLeft = false;
   }
 
   if(directionChangeToRight == true && 500 <= millis() - timeFromLastDirectionChange){
-    attachInterrupt(digitalPinToInterrupt(termogenSide), goLeftInterruptMethod, FALLING);
+    //attachInterrupt(digitalPinToInterrupt(termogenSide), goLeftInterruptMethod, FALLING);
+    termogenSideWatch = true;
     termogenSideAttachedInterrupt = true;
     directionChangeToRight = false;
   }
@@ -661,9 +670,10 @@ void loop() {
   }
 
   if(termogenSideAttachedInterrupt == true){
-        detachInterrupt(digitalPinToInterrupt(termogenSideAttachedInterrupt));
+        //detachInterrupt(digitalPinToInterrupt(termogenSideAttachedInterrupt));
+
   }else if(goreSideAttachedInterrupt == true){
-        detachInterrupt(digitalPinToInterrupt(goreSide));
+        //detachInterrupt(digitalPinToInterrupt(goreSide));
   }
 
   if(CurrentPage == 1 && lie == false && 500 < millis() - timeIntervalNextion)
@@ -751,10 +761,55 @@ void loop() {
   nexLoop(nex_listen_list);
 
   if(termogenSideAttachedInterrupt == true){
-    attachInterrupt(digitalPinToInterrupt(termogenSide), goLeftInterruptMethod, FALLING);
+    termogenSideWatch = true;
+    //attachInterrupt(digitalPinToInterrupt(termogenSide), goLeftInterruptMethod, FALLING);
   }else if(goreSideAttachedInterrupt == true){
-    attachInterrupt(digitalPinToInterrupt(goreSide), goRightInterruptMethod, FALLING);
+    goreSideWatch = true;
+    //attachInterrupt(digitalPinToInterrupt(goreSide), goRightInterruptMethod, FALLING);
   }
+
+  if(digitalRead(termogenSide) == LOW && termogenSideWatch == true){
+    if(lie == false){
+      lie = true;
+      lieTime = millis();
+      digitalWrite(goToRight, LOW);
+      moveToRight = false;
+      startRight = false;
+      startLeft = true;
+      time = millis();
+      timeChangeDirection = millis();
+
+      //detachInterrupt(digitalPinToInterrupt(termogenSide));
+      termogenSideWatch = false;
+      termogenSideAttachedInterrupt = false;
+
+      // Serial.print("lijevo ");
+      // Serial.println(turnCount);
+      // turnCount++;
+    }
+}
+if(digitalRead(goreSide) == LOW && goreSideWatch == true){
+  if(lie == false){
+    lie = true;
+    lieTime = millis();
+    digitalWrite(goToLeft, LOW);
+    moveToLeft = false;
+    startLeft = false;
+    startRight = true;
+    time = millis();
+    timeChangeDirection = millis();
+
+    //detachInterrupt(digitalPinToInterrupt(goreSide));
+    goreSideWatch = false;
+    goreSideAttachedInterrupt = false;
+
+    // Serial.print("desno ");
+    // Serial.println(turnCount);
+    //turnCount++;
+  }
+}
+
+
 
 
 // // reset serial to enable communication
