@@ -42,9 +42,6 @@ bool firstTimeForStart = false;
 bool firstTimeBurner = false;
 bool firstTimeMixer = false;
 
-bool goreSideAttachedInterrupt = false;
-bool termogenSideAttachedInterrupt = false;
-
 bool goreSideWatch = false;
 bool termogenSideWatch = false;
 
@@ -196,7 +193,7 @@ void PostavkeDryPopCallBack(void *ptr){
 
 }
 void PosmakLeftPushCallBack(void *ptr){
-  if(digitalRead(termogenSide) != HIGH){
+  if(digitalRead(termogenSide) != LOW){
     digitalWrite(mjesalicaSwitch, HIGH);
     timeForStartMovingMixer = millis();
     moveToLeft = true;
@@ -209,6 +206,7 @@ void PosmakLeftPopCallBack(void *ptr){
   digitalWrite(goToLeft, LOW);
   delay(500);
   digitalWrite(mjesalicaSwitch, LOW);
+  moveButtonsPressed = false;
   
 }
 void PosmakRightPushCallBack(void *ptr){
@@ -225,7 +223,7 @@ void PosmakRightPopCallBack(void *ptr){
   digitalWrite(goToRight, LOW);
   delay(500);
   digitalWrite(mjesalicaSwitch, LOW);
-  
+  moveButtonsPressed = false;
 }
 void BackToDry(void *ptr){
   CurrentPage = 1;
@@ -415,60 +413,50 @@ void loop() {
           }else if(digitalRead(goreSide) != LOW){
             goRight();
           }
-          if(startMixer == true && startLeft == true && timeInterval < millis() - time){
-              goLeft();
-            
-          }else if(startMixer == true && startRight == true && timeInterval < millis() - time){
-              goRight();
-            
-          } 
           timeDrying = millis();
           doneBooting = true;
         }
       }
     }
     
+    //procedure after boot is completed
   }else if(startDrying == true && stopDrying == false && doneBooting == true){
     if(timeForOtherStuffInterval / 5 <= millis() - timeForOtherStuff){
-
-
-    tempOfThermogen = thermocouple.readCelsius();
-
-
-    tempOfSeed = mlx.readObjectTempC();
-    tempOutside = mlx.readAmbientTempC();
-    
-    if(tempOfSeed > maxSeedTemp && kosticePostigleTemp == false){
-    kosticePostigleTemp = true;
-    timeOfBurnerShutdown[numberOfShutdowns] = millis();
-    numberOfShutdowns++;
-    }else if(tempOfSeed <35){
-      kosticePostigleTemp = false;
-    }
-
-    if(tempOfThermogen > maxTermTemp || kosticePostigleTemp == true){
-    digitalWrite(plamenikSwitch, LOW);
-    //Serial.println("hladi");
-    }
-    else if(kosticePostigleTemp == true && tempOfSeed <= 30){
-      digitalWrite(plamenikSwitch, HIGH);
-      kosticePostigleTemp = false;
+      tempOfThermogen = thermocouple.readCelsius();
+      tempOfSeed = mlx.readObjectTempC();
+      tempOutside = mlx.readAmbientTempC();
       
-      //Serial.println("grije");
-    } else if(kosticePostigleTemp == false && (tempOfSeed < 30 || tempOfThermogen < 55)){
-      digitalWrite(plamenikSwitch, HIGH);
-      //Serial.println("grije");
-    }
-    //logic to find out when to shutdown dryer
-    if(numberOfShutdowns >= 5){
-      if(timeOfBurnerShutdown[numberOfShutdowns - 1] - timeOfBurnerShutdown[numberOfShutdowns - 5] < 3600000){
-        startDrying = false;
-        stopDrying = true;
-        doneBooting = false;
+      if(tempOfSeed > maxSeedTemp && kosticePostigleTemp == false){
+      kosticePostigleTemp = true;
+      timeOfBurnerShutdown[numberOfShutdowns] = millis();
+      numberOfShutdowns++;
+      }else if(tempOfSeed <35){
+        kosticePostigleTemp = false;
       }
+
+      if(tempOfThermogen > maxTermTemp || kosticePostigleTemp == true){
+      digitalWrite(plamenikSwitch, LOW);
+      //Serial.println("hladi");
+      }
+      else if(kosticePostigleTemp == true && tempOfSeed <= 30){
+        digitalWrite(plamenikSwitch, HIGH);
+        kosticePostigleTemp = false;
+        
+        //Serial.println("grije");
+      } else if(kosticePostigleTemp == false && (tempOfSeed < 30 || tempOfThermogen < 55)){
+        digitalWrite(plamenikSwitch, HIGH);
+        //Serial.println("grije");
+      }
+      //logic to find out when to shutdown dryer
+      if(numberOfShutdowns >= 5){
+        if(timeOfBurnerShutdown[numberOfShutdowns - 1] - timeOfBurnerShutdown[numberOfShutdowns - 5] < 3600000){
+          startDrying = false;
+          stopDrying = true;
+          doneBooting = false;
+        }
      
-    }
-      timeForOtherStuff = millis();
+      }
+        timeForOtherStuff = millis();
     }
 
     if(startMixer == true && startLeft == true && timeInterval < millis() - time){
@@ -513,12 +501,15 @@ void loop() {
         }
     }
   }
+  //end of shutdown procedure
+
+
   //turn on posmak when button is pressed
   if(moveToRight == true && 500 <= millis() - timeForStartMovingMixer && digitalRead(goreSide) == HIGH){
     digitalWrite(goToLeft, HIGH);
   }
   //shutdown posmak when button is not pressed
-  if(moveToRight == false && digitalRead(termogenSide) == LOW){
+  if(moveButtonsPressed == true && digitalRead(termogenSide) == LOW){
     digitalWrite(goToLeft, LOW);
   }
   //shutdown posmak when button is not pressed
@@ -526,19 +517,17 @@ void loop() {
     digitalWrite(goToRight, HIGH);
   }
   //shutdown posmak when button is not pressed
-  if(moveToLeft == false && digitalRead(goreSide) == LOW){
+  if(moveButtonsPressed == true && digitalRead(goreSide) == LOW){
     digitalWrite(goToRight, LOW);
   }
 
   if(directionChangeToLeft == true && 500 <= millis() - timeFromLastDirectionChange){
-    goreSideWatch = true;
-    goreSideAttachedInterrupt = true;
+    termogenSideWatch = true;
     directionChangeToLeft = false;
   }
 
   if(directionChangeToRight == true && 500 <= millis() - timeFromLastDirectionChange){
-    termogenSideWatch = true;
-    termogenSideAttachedInterrupt = true;
+    goreSideWatch = true;
     directionChangeToRight = false;
   }
   if(lie == true && timeInterval + 750 < millis() - lieTime){
@@ -561,55 +550,31 @@ void loop() {
 
   nexLoop(nex_listen_list);
 
-  if(termogenSideAttachedInterrupt == true){
-    termogenSideWatch = true;
-
-  }else if(goreSideAttachedInterrupt == true){
-    goreSideWatch = true;
-
-  }
-
   if(digitalRead(termogenSide) == LOW && termogenSideWatch == true){
-    if(lie == false){
+    //if(lie == false){
+      // lie = true;
+      // lieTime = millis();
+      digitalWrite(goToLeft, LOW);
+      termogenSideWatch = false;
       moveToLeft = false;
-      lie = true;
-      lieTime = millis();
-      digitalWrite(goToRight, LOW);
-      moveToLeft = false;
-      startRight = false;
-      startLeft = true;
+      startLeft = false;
+      startRight = true;
       time = millis();
       timeChangeDirection = millis();
-
-
-      termogenSideWatch = false;
-      termogenSideAttachedInterrupt = false;
-
-      // Serial.print("lijevo ");
-      // Serial.println(turnCount);
-      // turnCount++;
-    }
+    //}
 }
 if(digitalRead(goreSide) == LOW && goreSideWatch == true){
-  if(lie == false){
+  //if(lie == false){
+    // lie = true;
+    // lieTime = millis();
+    digitalWrite(goToRight, LOW);
+    goreSideWatch = false;
     moveToRight = false;
-    lie = true;
-    lieTime = millis();
-    digitalWrite(goToLeft, LOW);
-    moveToRight = false;
-    startLeft = false;
-    startRight = true;
+    startRight = false;
+    startLeft = true;
     time = millis();
     timeChangeDirection = millis();
-
-    //detachInterrupt(digitalPinToInterrupt(goreSide));
-    goreSideWatch = false;
-    goreSideAttachedInterrupt = false;
-
-    // Serial.print("desno ");
-    // Serial.println(turnCount);
-    //turnCount++;
-  }
+  //}
 }
 
 // // reset serial to enable communication
