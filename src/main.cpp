@@ -18,8 +18,8 @@ bool directionChangeToRight = false;
 
 unsigned long timeForStartMovingMixer;
 bool moveButtonsPressed = false;
-bool moveToLeft = false;
 bool moveToRight = false;
+bool moveToLeft = false;
 
 unsigned long timeOfBurnerShutdown[20];
 int numberOfShutdowns = 0;
@@ -187,34 +187,16 @@ void PostavkeHomePopCallBack(void *ptr){
   CurrentPage = 2;
   maxSeedTempMenu.setValue((int)maxSeedTemp);
   maxTermTempMenu.setValue((int)maxTermTemp);
-  // Serial.print("n0.val=");
-  // Serial.print((int)maxSeedTemp);
-  // Serial.write(0xff);
-  // Serial.write(0xff);
-  // Serial.write(0xff);
-  // Serial.print("n1.val=");
-  // Serial.print((int)maxTermTemp);
-  // Serial.write(0xff);
-  // Serial.write(0xff);
-  // Serial.write(0xff);
+
 }
 void PostavkeDryPopCallBack(void *ptr){
   CurrentPage = 3;
   maxSeedTempDry.setValue((int)maxSeedTemp);
   maxTermTempDry.setValue((int)maxTermTemp);
-  // Serial.print("n0.val=");
-  // Serial.print((int)maxSeedTemp);
-  // Serial.write(0xff);
-  // Serial.write(0xff);
-  // Serial.write(0xff);
-  // Serial.print("n1.val=");
-  // Serial.print((int)maxTermTemp);
-  // Serial.write(0xff);
-  // Serial.write(0xff);
-  // Serial.write(0xff);
+
 }
 void PosmakLeftPushCallBack(void *ptr){
-  if(digitalRead(goreSide) == HIGH){
+  if(digitalRead(termogenSide) != HIGH){
     digitalWrite(mjesalicaSwitch, HIGH);
     timeForStartMovingMixer = millis();
     moveToLeft = true;
@@ -230,7 +212,7 @@ void PosmakLeftPopCallBack(void *ptr){
   
 }
 void PosmakRightPushCallBack(void *ptr){
-  if(digitalRead(termogenSide) == HIGH){
+  if(digitalRead(goreSide) != HIGH){
     digitalWrite(mjesalicaSwitch, HIGH);
     timeForStartMovingMixer = millis();
     moveToRight = true;
@@ -260,12 +242,7 @@ void DecrementTempOfSeed(void *ptr){
     maxSeedTempMenu.setValue((int)maxSeedTemp);
     maxTermTempMenu.setValue((int)maxTermTemp);
   }
-  
-  // Serial.print("n0.val=");
-  // Serial.print((int)maxSeedTemp);
-  // Serial.write(0xff);
-  // Serial.write(0xff);
-  // Serial.write(0xff);
+
 }
 void DecrementTempOfTerm(void *ptr){
   maxTermTemp = maxTermTemp - 1;
@@ -276,12 +253,7 @@ void DecrementTempOfTerm(void *ptr){
     maxSeedTempMenu.setValue((int)maxSeedTemp);
     maxTermTempMenu.setValue((int)maxTermTemp);
   }
-  //need to send data to display
-  // Serial.print("n1.val=");
-  // Serial.print((int)maxTermTemp);
-  // Serial.write(0xff);
-  // Serial.write(0xff);
-  // Serial.write(0xff);
+
 }
 void IncrementTempOfSeed(void *ptr){
   maxSeedTemp = maxSeedTemp + 1;
@@ -292,12 +264,7 @@ void IncrementTempOfSeed(void *ptr){
     maxSeedTempMenu.setValue((int)maxSeedTemp);
     maxTermTempMenu.setValue((int)maxTermTemp);
   }
-  //need to send data to display
-  // Serial.print("n0.val=");
-  // Serial.print((int)maxSeedTemp);
-  // Serial.write(0xff);
-  // Serial.write(0xff);
-  // Serial.write(0xff);
+
 }
 void IncrementTempOfTerm(void *ptr){
   maxTermTemp = maxTermTemp + 1;
@@ -308,69 +275,15 @@ void IncrementTempOfTerm(void *ptr){
     maxSeedTempMenu.setValue((int)maxSeedTemp);
     maxTermTempMenu.setValue((int)maxTermTemp);
   }
-  //need to send data to display
-  // Serial.print("n1.val=");
-  // Serial.print((int)maxTermTemp);
-  // Serial.write(0xff);
-  // Serial.write(0xff);
-  // Serial.write(0xff);
+
 } 
 
-void goLeftInterruptMethod(){
-  if(lie == false){
-    lie = true;
-    lieTime = millis();
-    digitalWrite(goToRight, LOW);
-    moveToRight = false;
-    startRight = false;
-    startLeft = true;
-    time = millis();
-    timeChangeDirection = millis();
-
-    //detachInterrupt(digitalPinToInterrupt(termogenSide));
-    termogenSideAttachedInterrupt = false;
-
-    // Serial.print("lijevo ");
-    // Serial.println(turnCount);
-    // turnCount++;
-  }else{
-    //Serial.println("okinuo desno pogrešno!");
-  }
-  // Serial.write(0xff);  
-  // Serial.write(0xff);
-  // Serial.write(0xff);
-}
-void goRightInterruptMethod(){
-  if(lie == false){
-    lie = true;
-    lieTime = millis();
-    digitalWrite(goToLeft, LOW);
-    moveToLeft = false;
-    startLeft = false;
-    startRight = true;
-    time = millis();
-    timeChangeDirection = millis();
-
-    //detachInterrupt(digitalPinToInterrupt(goreSide));
-    goreSideAttachedInterrupt = false;
-
-    // Serial.print("desno ");
-    // Serial.println(turnCount);
-    //turnCount++;
-  }else{
-    //Serial.println("okinuo lijevo pogrešno!");
-  }
-  // Serial.write(0xff);  
-  // Serial.write(0xff);
-  // Serial.write(0xff);
-}
 void goLeft(){
     startLeft = false;
     digitalWrite(goToRight, LOW);
     digitalWrite(goToLeft, HIGH);
     timeFromLastDirectionChange = millis();
     directionChangeToLeft = true;
-    //attachInterrupt(digitalPinToInterrupt(goreSide), goRightInterruptMethod, FALLING);
 }
 void goRight(){
     startRight = false;
@@ -378,7 +291,6 @@ void goRight(){
     digitalWrite(goToRight, HIGH);
     timeFromLastDirectionChange = millis();
     directionChangeToRight = true;
-    //attachInterrupt(digitalPinToInterrupt(termogenSide), goLeftInterruptMethod, FALLING);
 }
 
 
@@ -387,23 +299,6 @@ void setup() {
   Serial.begin(9600);  // Start serial comunication at baud=9600
 
   nexInit();
-  // I am going to change the Serial baud to a faster rate.
-  // The reason is that the slider have a glitch when we try to read it's value.
-  // One way to solve it was to increase the speed of the serial port.
-  // delay(500);  // This dalay is just in case the nextion display didn't start yet, to be sure it will receive the following command.
-  // Serial.print("baud=115200");  // Set new baud rate of nextion to 115200, but it's temporal. Next time nextion is power on,
-  //                               // it will retore to default baud of 9600.
-  //                               // To take effect, make sure to reboot the arduino (reseting arduino is not enough).
-  //                               // If you want to change the default baud, send the command as "bauds=115200", instead of "baud=115200".
-  //                               // If you change the default baud, everytime the nextion is power ON is going to have that baud rate, and
-  //                               // would not be necessery to set the baud on the setup anymore.
-  // Serial.write(0xff);  // We always have to send this three lines after each command sent to nextion.
-  // Serial.write(0xff);
-  // Serial.write(0xff);
-
-  // Serial.end();  // End the serial comunication of baud=9600
-
-  // Serial.begin(115200);  // Start serial comunication at baud=115200
 
   Start.attachPop(StartPopCallback, &Start);
   PostavkeHome.attachPop(PostavkeHomePopCallBack, &PostavkeHome);
@@ -433,11 +328,7 @@ void setup() {
   pinMode(termogenVentSwitch, OUTPUT);
   pinMode(plamenikSwitch, OUTPUT);
   pinMode(mjesalicaSwitch, OUTPUT);
-  // pinMode(goLeftInterruptMethod, INPUT);
-  // pinMode(goRightInterruptMethod, INPUT);
-  //attachInterrupt(digitalPinToInterrupt(termogenSide), goLeftInterruptMethod, FALLING);
-  //attachInterrupt(digitalPinToInterrupt(goreSide), goRightInterruptMethod, FALLING);
-  
+
   digitalWrite(goToLeft, LOW);
   digitalWrite(goToRight, LOW);
   digitalWrite(termogenVentSwitch, LOW);
@@ -519,9 +410,9 @@ void loop() {
           firstTimeMixer = true;
         }
         if(5000 <= millis() - timeMixer){         //start moving mixer
-          if(digitalRead(goreSide) == HIGH){
+          if(digitalRead(termogenSide) != LOW){
             goLeft();
-          }else{
+          }else if(digitalRead(goreSide) != LOW){
             goRight();
           }
           if(startMixer == true && startLeft == true && timeInterval < millis() - time){
@@ -539,32 +430,13 @@ void loop() {
     
   }else if(startDrying == true && stopDrying == false && doneBooting == true){
     if(timeForOtherStuffInterval / 5 <= millis() - timeForOtherStuff){
-      //Serial.print("Ambient = "); Serial.print(mlx.readAmbientTempC()); 
-      //Serial.print("*C\tObject = "); Serial.print(mlx.readObjectTempC()); Serial.println("*C");
-      //Serial.print("C = "); 
-      //Serial.println(thermocouple.readCelsius());
+
 
     tempOfThermogen = thermocouple.readCelsius();
-    //Serial.print(thermocouple.readCelsius());
+
 
     tempOfSeed = mlx.readObjectTempC();
     tempOutside = mlx.readAmbientTempC();
-    // Serial.println("term");
-    // Serial.println(tempOfThermogen);
-    // Serial.println((int)tempOfThermogen);
-    // Serial.println("Seed");
-    // Serial.println(tempOfSeed);
-    // Serial.println((int)tempOfSeed);
-
-
-    // check if returns are valid, if they are NaN (not a number) then something went wrong!
-    // if (isnan(tempOfSeed) || isnan(tempOfThermogen)) 
-    // {
-    //   //Serial.println("Failed to read from DHT");
-    //   tempOfSeed = 50;
-    // } 
-
-    //CurrentPage == 1
     
     if(tempOfSeed > maxSeedTemp && kosticePostigleTemp == false){
     kosticePostigleTemp = true;
@@ -612,10 +484,7 @@ void loop() {
     tempOfThermogen = thermocouple.readCelsius();
     tempOfSeed = mlx.readObjectTempC();
     tempOutside = mlx.readAmbientTempC();
-    // Serial.println("termogen: ");
-    // Serial.println(tempOfThermogen);
-    // Serial.println("ambient temp: ");
-    //Serial.println(mlx.readAmbientTempC() +5);
+
     if(tempOfSeed < (tempOutside + 8) || tempOfSeed < (tempOfThermogen + 8)){
       if(startLeft == true  &&  stopMoving == false){
         digitalWrite(goToRight, LOW);
@@ -644,23 +513,30 @@ void loop() {
         }
     }
   }
-  if(moveToLeft == true && 500 <= millis() - timeForStartMovingMixer){
+  //turn on posmak when button is pressed
+  if(moveToRight == true && 500 <= millis() - timeForStartMovingMixer && digitalRead(goreSide) == HIGH){
     digitalWrite(goToLeft, HIGH);
   }
-  
-  if(moveToRight == true && 500 <= millis() - timeForStartMovingMixer){
+  //shutdown posmak when button is not pressed
+  if(moveToRight == false && digitalRead(termogenSide) == LOW){
+    digitalWrite(goToLeft, LOW);
+  }
+  //shutdown posmak when button is not pressed
+  if(moveToLeft == true && 500 <= millis() - timeForStartMovingMixer && digitalRead(termogenSide) == HIGH){
     digitalWrite(goToRight, HIGH);
+  }
+  //shutdown posmak when button is not pressed
+  if(moveToLeft == false && digitalRead(goreSide) == LOW){
+    digitalWrite(goToRight, LOW);
   }
 
   if(directionChangeToLeft == true && 500 <= millis() - timeFromLastDirectionChange){
     goreSideWatch = true;
-    //attachInterrupt(digitalPinToInterrupt(goreSide), goRightInterruptMethod, FALLING);
     goreSideAttachedInterrupt = true;
     directionChangeToLeft = false;
   }
 
   if(directionChangeToRight == true && 500 <= millis() - timeFromLastDirectionChange){
-    //attachInterrupt(digitalPinToInterrupt(termogenSide), goLeftInterruptMethod, FALLING);
     termogenSideWatch = true;
     termogenSideAttachedInterrupt = true;
     directionChangeToRight = false;
@@ -669,12 +545,6 @@ void loop() {
     lie = false;
   }
 
-  if(termogenSideAttachedInterrupt == true){
-        //detachInterrupt(digitalPinToInterrupt(termogenSideAttachedInterrupt));
-
-  }else if(goreSideAttachedInterrupt == true){
-        //detachInterrupt(digitalPinToInterrupt(goreSide));
-  }
 
   if(CurrentPage == 1 && lie == false && 500 < millis() - timeIntervalNextion)
     {	
@@ -684,102 +554,34 @@ void loop() {
       TermNext.setValue(tempOfThermogen);
       SeedNext.setValue(tempOfSeed);
       TimeNext.setValue(calculateTime);
-      // Serial.print("termogen:");
-      // Serial.println(tempOfThermogen);
-      // Serial.print("Kostice:");
-      // Serial.println(tempOfSeed);
-
-      // if(stageNumber == 0){
-      //   Serial.print("n0.val=");  
-      //   stageNumber = 1;
-      // }
-      // if(stageNumber == 1){
-      //   Serial.print((int)tempOfThermogen);
-      //   stageNumber = 2;
-      // }
-      // if(stageNumber == 2){
-      //   Serial.write(0xff);
-      //   stageNumber = 3;
-      // }
-      // if(stageNumber == 3){
-      //   Serial.write(0xff);
-      //   stageNumber = 4;
-      // }
-      // if(stageNumber == 4){
-      //   Serial.write(0xff);
-      //   stageNumber = 5;
-      // }
-      // if(stageNumber == 5){
-      //   Serial.print("n1.val=");  
-      //   stageNumber = 6;
-      // }
-      // if(stageNumber == 6){
-      //   Serial.print((int)tempOfSeed);
-      //   stageNumber = 7;
-      // }
-      // if(stageNumber == 7){
-      //   Serial.write(0xff);
-      //   stageNumber = 8;
-      // }
-      // if(stageNumber == 8){
-      //   Serial.write(0xff);
-      //   stageNumber = 9;
-      // }
-      // if(stageNumber == 9){
-      //   Serial.write(0xff);
-      //   stageNumber = 10;
-      // }
-      // if(stageNumber == 10){
-      //   Serial.print("n2.val=");  
-      //   stageNumber = 11;
-      // }
-      // if(stageNumber == 11){
-      //   calculateTime = timeDrying/1000/60;
-      //   Serial.print(calculateTime);
-      //   stageNumber = 12; 
-      // }
-      // if(stageNumber == 12){
-      //   Serial.write(0xff);
-      //   stageNumber = 13;
-      // }
-      // if(stageNumber == 13){
-      //   Serial.write(0xff);
-      //   stageNumber = 14;
-      // }
-      // if(stageNumber == 14){
-      //   Serial.write(0xff);
-      //   stageNumber = 0;
-      // }
       
       timeIntervalNextion = millis();
       
     }
 
-  // Serial.println(digitalRead(goLeftInterruptMethod));
-  // Serial.println(digitalRead(goRightInterruptMethod));
-
   nexLoop(nex_listen_list);
 
   if(termogenSideAttachedInterrupt == true){
     termogenSideWatch = true;
-    //attachInterrupt(digitalPinToInterrupt(termogenSide), goLeftInterruptMethod, FALLING);
+
   }else if(goreSideAttachedInterrupt == true){
     goreSideWatch = true;
-    //attachInterrupt(digitalPinToInterrupt(goreSide), goRightInterruptMethod, FALLING);
+
   }
 
   if(digitalRead(termogenSide) == LOW && termogenSideWatch == true){
     if(lie == false){
+      moveToLeft = false;
       lie = true;
       lieTime = millis();
       digitalWrite(goToRight, LOW);
-      moveToRight = false;
+      moveToLeft = false;
       startRight = false;
       startLeft = true;
       time = millis();
       timeChangeDirection = millis();
 
-      //detachInterrupt(digitalPinToInterrupt(termogenSide));
+
       termogenSideWatch = false;
       termogenSideAttachedInterrupt = false;
 
@@ -790,10 +592,11 @@ void loop() {
 }
 if(digitalRead(goreSide) == LOW && goreSideWatch == true){
   if(lie == false){
+    moveToRight = false;
     lie = true;
     lieTime = millis();
     digitalWrite(goToLeft, LOW);
-    moveToLeft = false;
+    moveToRight = false;
     startLeft = false;
     startRight = true;
     time = millis();
@@ -808,9 +611,6 @@ if(digitalRead(goreSide) == LOW && goreSideWatch == true){
     //turnCount++;
   }
 }
-
-
-
 
 // // reset serial to enable communication
 //   if(!Serial){
