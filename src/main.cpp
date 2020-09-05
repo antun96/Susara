@@ -17,6 +17,7 @@ bool directionChangeToLeft = false;
 bool directionChangeToRight = false;
 
 unsigned long timeForStartMovingMixer;
+
 bool moveButtonsPressed = false;
 bool moveToRight = false;
 bool moveToLeft = false;
@@ -57,8 +58,6 @@ int thermoSCK = 9; //6
 int termogenSide = 2;
 int goreSide = 3;
 
-
-
 int termogenVentSwitch = 6;
 int plamenikSwitch = 7;
 
@@ -86,6 +85,8 @@ double tempOfSeed;
 double tempOutside;
 bool kosticePostigleTemp = false;
 unsigned long timeDrying;
+
+bool shutDownTemperatureReached = false;
 
 int calculateTime = 0;
 
@@ -193,40 +194,43 @@ void PostavkeDryPopCallBack(void *ptr){
 
 }
 void PosmakLeftPushCallBack(void *ptr){
-  if(digitalRead(termogenSide) != LOW){
+  if(digitalRead(termogenSide) != LOW && moveButtonsPressed == false){
     digitalWrite(mjesalicaSwitch, HIGH);
     timeForStartMovingMixer = millis();
     moveToLeft = true;
+    termogenSideWatch = true;
     moveButtonsPressed = true;
   }
   
 }
 void PosmakLeftPopCallBack(void *ptr){
   moveToLeft = false;
-  digitalWrite(goToLeft, LOW);
-  delay(500);
+  termogenSideWatch = false;
+  digitalWrite(goToRight, LOW);
   digitalWrite(mjesalicaSwitch, LOW);
   moveButtonsPressed = false;
   
 }
 void PosmakRightPushCallBack(void *ptr){
-  if(digitalRead(goreSide) != HIGH){
+  if(digitalRead(goreSide) != LOW && moveButtonsPressed == false){
     digitalWrite(mjesalicaSwitch, HIGH);
     timeForStartMovingMixer = millis();
     moveToRight = true;
+    goreSideWatch = true;
     moveButtonsPressed = true;
   }
   
 }
 void PosmakRightPopCallBack(void *ptr){
   moveToRight = false;
-  digitalWrite(goToRight, LOW);
-  delay(500);
+  goreSideWatch = false;
+  digitalWrite(goToLeft, LOW);
   digitalWrite(mjesalicaSwitch, LOW);
   moveButtonsPressed = false;
 }
 void BackToDry(void *ptr){
   CurrentPage = 1;
+  timeIntervalNextion = millis();
 }
 void BackToHome(void *ptr){
   CurrentPage = 0;
@@ -469,20 +473,27 @@ void loop() {
 //shutdown procedure
   }else if(startDrying == false && stopDrying == true && doneBooting == false){
     digitalWrite(plamenikSwitch, LOW);
-    tempOfThermogen = thermocouple.readCelsius();
-    tempOfSeed = mlx.readObjectTempC();
-    tempOutside = mlx.readAmbientTempC();
+    if(2000 < millis() - timeForOtherStuff){
+      tempOfThermogen = thermocouple.readCelsius();
+      tempOfSeed = mlx.readObjectTempC();
+      tempOutside = mlx.readAmbientTempC();
+      
+      timeForOtherStuff = millis();
 
-    if(tempOfSeed < (tempOutside + 8) || tempOfSeed < (tempOfThermogen + 8)){
-      if(startLeft == true  &&  stopMoving == false){
-        digitalWrite(goToRight, LOW);
-        timeMixer = millis();
-        stopMoving = true;
-        
-      }else if(5000 <= millis() - timeMixer && stopMoving == true){
+    }
+
+    // if(tempOfSeed < (tempOutside + 4)){
+    if(tempOfSeed <= (tempOutside - 0) || shutDownTemperatureReached == true){
+      shutDownTemperatureReached = true;
+      
+      //odi skroz u lijevo
+      if(startMixer == true && startLeft == true && timeInterval < millis() - time){
+        goLeft();
+      }else if(startRight == true && startMixer == true && timeInterval < millis() - time){
           startMixer = false;
           digitalWrite(mjesalicaSwitch, LOW);
-          digitalWrite(termogenVentSwitch, LOW);
+          digitalWrite(goToLeft, LOW);
+          digitalWrite(goToRight, LOW);
           digitalWrite(termogenVentSwitch, LOW);
           startVentTermogen = false;
           fanVentStart = 0;
@@ -495,30 +506,58 @@ void loop() {
           stopDrying = false;
           startDrying = false;
           stopMoving = false;
-        }
-        if(startMixer == true && startRight == true && timeInterval < millis() - time){
-          goLeft();
-        }
+      }
+      // if(startLeft == true  &&  stopMoving == false){
+      //   digitalWrite(goToRight, LOW);
+      //   timeMixer = millis();
+      //   stopMoving = true;
+        
+      // }else if(5000 <= millis() - timeMixer && stopMoving == true){
+      //     startMixer = false;
+      //     digitalWrite(mjesalicaSwitch, LOW);
+      //     digitalWrite(termogenVentSwitch, LOW);
+      //     digitalWrite(termogenVentSwitch, LOW);
+      //     startVentTermogen = false;
+      //     fanVentStart = 0;
+      //     firstTimeBurner = false;
+      //     startMixer = false;
+      //     firstTimeMixer = false;
+      //     startLeft = false;
+      //     startRight = false;
+      //     doneBooting = true;
+      //     stopDrying = false;
+      //     startDrying = false;
+      //     stopMoving = false;
+      //   }
+        
+    } else {
+      if(startMixer == true && startLeft == true && timeInterval < millis() - time){
+        goLeft();
+      }
+      if(startMixer == true && startRight == true && timeInterval < millis() - time){
+        goRight();
+      }
     }
   }
   //end of shutdown procedure
 
-
-  //turn on posmak when button is pressed
-  if(moveToRight == true && 500 <= millis() - timeForStartMovingMixer && digitalRead(goreSide) == HIGH){
-    digitalWrite(goToLeft, HIGH);
-  }
-  //shutdown posmak when button is not pressed
-  if(moveButtonsPressed == true && digitalRead(termogenSide) == LOW){
-    digitalWrite(goToLeft, LOW);
-  }
-  //shutdown posmak when button is not pressed
-  if(moveToLeft == true && 500 <= millis() - timeForStartMovingMixer && digitalRead(termogenSide) == HIGH){
-    digitalWrite(goToRight, HIGH);
-  }
-  //shutdown posmak when button is not pressed
-  if(moveButtonsPressed == true && digitalRead(goreSide) == LOW){
-    digitalWrite(goToRight, LOW);
+  if(moveButtonsPressed == true){
+    //turn on posmak when button is pressed
+    if(moveToLeft == true && 500 <= (millis() - timeForStartMovingMixer) && digitalRead(goreSide) != LOW){
+      digitalWrite(goToRight, HIGH);
+    }
+    //shutdown posmak when button is not pressed
+    if(digitalRead(goreSide) == LOW || moveToLeft == false){
+      digitalWrite(goToRight, LOW);
+    }
+    //turn on posmak when button is pressed
+    if(moveToRight == true && 500 <= (millis() - timeForStartMovingMixer) && digitalRead(termogenSide) != LOW){
+      digitalWrite(goToLeft, HIGH);
+    }
+    //shutdown posmak when button is not pressed
+    if(digitalRead(termogenSide) == LOW || moveToRight == false){
+      digitalWrite(goToLeft, LOW);
+    }
   }
 
   if(directionChangeToLeft == true && 500 <= millis() - timeFromLastDirectionChange){
@@ -535,11 +574,9 @@ void loop() {
   }
 
 
-  if(CurrentPage == 1 && lie == false && 500 < millis() - timeIntervalNextion)
+  if(CurrentPage == 1 && 1000 < millis() - timeIntervalNextion)
     {	
-      
-
-      calculateTime = timeDrying/1000/60;
+      calculateTime = (millis() - timeDrying)/1000/60;
       TermNext.setValue(tempOfThermogen);
       SeedNext.setValue(tempOfSeed);
       TimeNext.setValue(calculateTime);
@@ -547,8 +584,6 @@ void loop() {
       timeIntervalNextion = millis();
       
     }
-
-  nexLoop(nex_listen_list);
 
   if(digitalRead(termogenSide) == LOW && termogenSideWatch == true){
     //if(lie == false){
@@ -576,6 +611,8 @@ if(digitalRead(goreSide) == LOW && goreSideWatch == true){
     timeChangeDirection = millis();
   //}
 }
+
+nexLoop(nex_listen_list);
 
 // // reset serial to enable communication
 //   if(!Serial){
