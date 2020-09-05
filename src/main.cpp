@@ -55,15 +55,15 @@ int thermoCS = 11; //7
 int thermoSCK = 9; //6
 
 //endSensor
-int termogenSide = 2;
-int goreSide = 3;
+int termogenSide = 3;
+int goreSide = 2;
 
 int termogenVentSwitch = 6;
 int plamenikSwitch = 7;
 
 int mjesalicaSwitch = 8;
-int goToRight = A1;
-int goToLeft = A0;
+int goToRight = A0;
+int goToLeft = A1;
 bool startLeft = false;
 bool startRight = false;
 
@@ -85,6 +85,7 @@ double tempOfSeed;
 double tempOutside;
 bool kosticePostigleTemp = false;
 unsigned long timeDrying;
+unsigned long timeOfShutdownStart;
 
 bool shutDownTemperatureReached = false;
 
@@ -206,7 +207,7 @@ void PosmakLeftPushCallBack(void *ptr){
 void PosmakLeftPopCallBack(void *ptr){
   moveToLeft = false;
   termogenSideWatch = false;
-  digitalWrite(goToRight, LOW);
+  digitalWrite(goToLeft, LOW);
   digitalWrite(mjesalicaSwitch, LOW);
   moveButtonsPressed = false;
   
@@ -224,7 +225,7 @@ void PosmakRightPushCallBack(void *ptr){
 void PosmakRightPopCallBack(void *ptr){
   moveToRight = false;
   goreSideWatch = false;
-  digitalWrite(goToLeft, LOW);
+  digitalWrite(goToRight, LOW);
   digitalWrite(mjesalicaSwitch, LOW);
   moveButtonsPressed = false;
 }
@@ -457,6 +458,8 @@ void loop() {
           startDrying = false;
           stopDrying = true;
           doneBooting = false;
+          digitalWrite(plamenikSwitch, LOW);
+          timeOfShutdownStart = millis();
         }
      
       }
@@ -472,7 +475,7 @@ void loop() {
 
 //shutdown procedure
   }else if(startDrying == false && stopDrying == true && doneBooting == false){
-    digitalWrite(plamenikSwitch, LOW);
+    //digitalWrite(plamenikSwitch, LOW);
     if(2000 < millis() - timeForOtherStuff){
       tempOfThermogen = thermocouple.readCelsius();
       tempOfSeed = mlx.readObjectTempC();
@@ -483,7 +486,7 @@ void loop() {
     }
 
     // if(tempOfSeed < (tempOutside + 4)){
-    if(tempOfSeed <= (tempOutside - 0) || shutDownTemperatureReached == true){
+    if((1200000 < millis() - timeOfShutdownStart && tempOfSeed <= (tempOutside + 4)) || shutDownTemperatureReached == true){
       shutDownTemperatureReached = true;
       
       //odi skroz u lijevo
@@ -506,6 +509,7 @@ void loop() {
           stopDrying = false;
           startDrying = false;
           stopMoving = false;
+          shutDownTemperatureReached = false;
       }
       // if(startLeft == true  &&  stopMoving == false){
       //   digitalWrite(goToRight, LOW);
@@ -543,20 +547,20 @@ void loop() {
 
   if(moveButtonsPressed == true){
     //turn on posmak when button is pressed
-    if(moveToLeft == true && 500 <= (millis() - timeForStartMovingMixer) && digitalRead(goreSide) != LOW){
-      digitalWrite(goToRight, HIGH);
-    }
-    //shutdown posmak when button is not pressed
-    if(digitalRead(goreSide) == LOW || moveToLeft == false){
-      digitalWrite(goToRight, LOW);
-    }
-    //turn on posmak when button is pressed
-    if(moveToRight == true && 500 <= (millis() - timeForStartMovingMixer) && digitalRead(termogenSide) != LOW){
+    if(moveToLeft == true && 500 <= (millis() - timeForStartMovingMixer) && digitalRead(termogenSide) != LOW){
       digitalWrite(goToLeft, HIGH);
     }
     //shutdown posmak when button is not pressed
-    if(digitalRead(termogenSide) == LOW || moveToRight == false){
+    if(digitalRead(termogenSide) == LOW && moveToLeft == true){
       digitalWrite(goToLeft, LOW);
+    }
+    //turn on posmak when button is pressed
+    if(moveToRight == true && 500 <= (millis() - timeForStartMovingMixer) && digitalRead(goreSide) != LOW){
+      digitalWrite(goToRight, HIGH);
+    }
+    //shutdown posmak when button is not pressed
+    if(digitalRead(goreSide) == LOW && moveToRight == true){
+      digitalWrite(goToRight, LOW);
     }
   }
 
@@ -585,7 +589,7 @@ void loop() {
       
     }
 
-  if(digitalRead(termogenSide) == LOW && termogenSideWatch == true){
+  if(digitalRead(termogenSide) == LOW && termogenSideWatch == true && moveButtonsPressed == false){
     //if(lie == false){
       // lie = true;
       // lieTime = millis();
@@ -598,7 +602,7 @@ void loop() {
       timeChangeDirection = millis();
     //}
 }
-if(digitalRead(goreSide) == LOW && goreSideWatch == true){
+if(digitalRead(goreSide) == LOW && goreSideWatch == true && moveButtonsPressed == false){
   //if(lie == false){
     // lie = true;
     // lieTime = millis();
