@@ -2,9 +2,9 @@
 #include <Wire.h>
 #include <Adafruit_MLX90614.h>
 #include <max6675.h>
-#include <Nextion.h>
-#include <SD.h>
-#include <SoftwareSerial.h>
+// #include <Nextion.h>
+// #include <SD.h>
+// #include <SoftwareSerial.h>
 
 unsigned long time;
 unsigned long timeForOtherStuff;
@@ -99,7 +99,7 @@ char receivedChar;
 bool newData = false;
 
 float maxSeedTemp = 55;
-float maxTermTemp = 65;
+float maxTermTemp = 48;
 
 int stageNumber = 0;
 char send[6];
@@ -111,175 +111,175 @@ int CurrentPage = 0;
 
 
 
-NexButton Start = NexButton(0, 1, "b0");
-NexButton PostavkeHome = NexButton(0, 2, "b1");
-NexButton PosmakLeft = NexButton(0, 3, "b2");
-NexButton PosmakRight = NexButton(0, 4, "b3");
-NexButton PostavkeDry = NexButton(1, 2, "b1");
-NexButton EndDry = NexButton(1, 1, "b0");
-NexButton DecrementTempOfSeedHome = NexButton(2, 2, "b0");
-NexButton IncrementTempOfSeedHome = NexButton(2, 3, "b1");
-NexButton DecrementTempOfTermHome = NexButton(2, 7, "b2");
-NexButton IncrementTempOfTermHome = NexButton(2, 8, "b3");
-NexButton BackFromSettingsHome = NexButton(2, 10, "b4");
-NexButton BackFromSettingsDry = NexButton(3, 10, "b4");
-NexButton DecrementTempOfSeedDry = NexButton(3, 2, "b0");
-NexButton IncrementTempOfSeedDry = NexButton(3, 3, "b1");
-NexButton DecrementTempOfTermDry = NexButton(3, 7, "b2");
-NexButton IncrementTempOfTermDry = NexButton(3, 8, "b3");
-NexNumber TermNext = NexNumber(1, 7, "n0");
-NexNumber SeedNext = NexNumber(1, 8, "n1");
-NexNumber TimeNext = NexNumber(1, 9, "n2");
-NexNumber maxTermTempMenu = NexNumber(2, 9, "n1");
-NexNumber maxTermTempDry = NexNumber(3, 9, "n1");
-NexNumber maxSeedTempMenu = NexNumber(2, 4, "n0");
-NexNumber maxSeedTempDry = NexNumber(3, 4, "n0");
+// NexButton Start = NexButton(0, 1, "b0");
+// NexButton PostavkeHome = NexButton(0, 2, "b1");
+// NexButton PosmakLeft = NexButton(0, 3, "b2");
+// NexButton PosmakRight = NexButton(0, 4, "b3");
+// NexButton PostavkeDry = NexButton(1, 2, "b1");
+// NexButton EndDry = NexButton(1, 1, "b0");
+// NexButton DecrementTempOfSeedHome = NexButton(2, 2, "b0");
+// NexButton IncrementTempOfSeedHome = NexButton(2, 3, "b1");
+// NexButton DecrementTempOfTermHome = NexButton(2, 7, "b2");
+// NexButton IncrementTempOfTermHome = NexButton(2, 8, "b3");
+// NexButton BackFromSettingsHome = NexButton(2, 10, "b4");
+// NexButton BackFromSettingsDry = NexButton(3, 10, "b4");
+// NexButton DecrementTempOfSeedDry = NexButton(3, 2, "b0");
+// NexButton IncrementTempOfSeedDry = NexButton(3, 3, "b1");
+// NexButton DecrementTempOfTermDry = NexButton(3, 7, "b2");
+// NexButton IncrementTempOfTermDry = NexButton(3, 8, "b3");
+// NexNumber TermNext = NexNumber(1, 7, "n0");
+// NexNumber SeedNext = NexNumber(1, 8, "n1");
+// NexNumber TimeNext = NexNumber(1, 9, "n2");
+// NexNumber maxTermTempMenu = NexNumber(2, 9, "n1");
+// NexNumber maxTermTempDry = NexNumber(3, 9, "n1");
+// NexNumber maxSeedTempMenu = NexNumber(2, 4, "n0");
+// NexNumber maxSeedTempDry = NexNumber(3, 4, "n0");
 
 
 
-NexPage page0 = NexPage(0, 0, "page0");  // Page added as a touch event
-NexPage page1 = NexPage(1, 0, "page1");  // Page added as a touch event
-NexPage page2 = NexPage(2, 0, "page2");  // Page added as a touch event
-NexPage page3 = NexPage(3, 0, "page3");
+// NexPage page0 = NexPage(0, 0, "page0");  // Page added as a touch event
+// NexPage page1 = NexPage(1, 0, "page1");  // Page added as a touch event
+// NexPage page2 = NexPage(2, 0, "page2");  // Page added as a touch event
+// NexPage page3 = NexPage(3, 0, "page3");
 
-NexTouch *nex_listen_list[] = {
-  &Start,
-  &PostavkeHome,
-  &PosmakLeft,
-  &PosmakRight,
-  &PostavkeDry,
-  &EndDry,
-  &DecrementTempOfSeedHome,
-  &IncrementTempOfSeedHome,
-  &DecrementTempOfTermHome,
-  &IncrementTempOfTermHome,
-  &BackFromSettingsHome,
-  &BackFromSettingsDry,
-  &DecrementTempOfSeedDry,
-  &IncrementTempOfSeedDry,
-  &DecrementTempOfTermDry,
-  &IncrementTempOfTermDry,
-  &TermNext,
-  &SeedNext,
-  &TimeNext,
-  &maxTermTempMenu,
-  &maxTermTempDry,
-  &maxSeedTempMenu,
-  &maxSeedTempDry,
-  NULL
-};
+// NexTouch *nex_listen_list[] = {
+//   &Start,
+//   &PostavkeHome,
+//   &PosmakLeft,
+//   &PosmakRight,
+//   &PostavkeDry,
+//   &EndDry,
+//   &DecrementTempOfSeedHome,
+//   &IncrementTempOfSeedHome,
+//   &DecrementTempOfTermHome,
+//   &IncrementTempOfTermHome,
+//   &BackFromSettingsHome,
+//   &BackFromSettingsDry,
+//   &DecrementTempOfSeedDry,
+//   &IncrementTempOfSeedDry,
+//   &DecrementTempOfTermDry,
+//   &IncrementTempOfTermDry,
+//   &TermNext,
+//   &SeedNext,
+//   &TimeNext,
+//   &maxTermTempMenu,
+//   &maxTermTempDry,
+//   &maxSeedTempMenu,
+//   &maxSeedTempDry,
+//   NULL
+// };
 
-void StartPopCallback(void *ptr)  // Release event for button b1
-{
-  stopDrying = false;
-  startDrying = true;
-  doneBooting = false;
-  CurrentPage = 1;
-}
-void EndDryPopCallBack(void *ptr){
-  startDrying = false;
-  doneBooting = false;
-  stopDrying = true;
-  CurrentPage = 0;
-}
-void PostavkeHomePopCallBack(void *ptr){
-  CurrentPage = 2;
-  maxSeedTempMenu.setValue((int)maxSeedTemp);
-  maxTermTempMenu.setValue((int)maxTermTemp);
+// void StartPopCallback(void *ptr)  // Release event for button b1
+// {
+//   stopDrying = false;
+//   startDrying = true;
+//   doneBooting = false;
+//   CurrentPage = 1;
+// }
+// void EndDryPopCallBack(void *ptr){
+//   startDrying = false;
+//   doneBooting = false;
+//   stopDrying = true;
+//   CurrentPage = 0;
+// }
+// void PostavkeHomePopCallBack(void *ptr){
+//   CurrentPage = 2;
+//   maxSeedTempMenu.setValue((int)maxSeedTemp);
+//   maxTermTempMenu.setValue((int)maxTermTemp);
 
-}
-void PostavkeDryPopCallBack(void *ptr){
-  CurrentPage = 3;
-  maxSeedTempDry.setValue((int)maxSeedTemp);
-  maxTermTempDry.setValue((int)maxTermTemp);
+// }
+// void PostavkeDryPopCallBack(void *ptr){
+//   CurrentPage = 3;
+//   maxSeedTempDry.setValue((int)maxSeedTemp);
+//   maxTermTempDry.setValue((int)maxTermTemp);
 
-}
-void PosmakLeftPushCallBack(void *ptr){
-  if(digitalRead(termogenSide) != LOW && moveButtonsPressed == false){
-    digitalWrite(mjesalicaSwitch, HIGH);
-    timeForStartMovingMixer = millis();
-    moveToLeft = true;
-    termogenSideWatch = true;
-    moveButtonsPressed = true;
-  }
+// }
+// void PosmakLeftPushCallBack(void *ptr){
+//   if(digitalRead(termogenSide) != LOW && moveButtonsPressed == false){
+//     digitalWrite(mjesalicaSwitch, HIGH);
+//     timeForStartMovingMixer = millis();
+//     moveToLeft = true;
+//     termogenSideWatch = true;
+//     moveButtonsPressed = true;
+//   }
   
-}
-void PosmakLeftPopCallBack(void *ptr){
-  moveToLeft = false;
-  termogenSideWatch = false;
-  digitalWrite(goToLeft, LOW);
-  digitalWrite(mjesalicaSwitch, LOW);
-  moveButtonsPressed = false;
+// }
+// void PosmakLeftPopCallBack(void *ptr){
+//   moveToLeft = false;
+//   termogenSideWatch = false;
+//   digitalWrite(goToLeft, LOW);
+//   digitalWrite(mjesalicaSwitch, LOW);
+//   moveButtonsPressed = false;
   
-}
-void PosmakRightPushCallBack(void *ptr){
-  if(digitalRead(goreSide) != LOW && moveButtonsPressed == false){
-    digitalWrite(mjesalicaSwitch, HIGH);
-    timeForStartMovingMixer = millis();
-    moveToRight = true;
-    goreSideWatch = true;
-    moveButtonsPressed = true;
-  }
+// }
+// void PosmakRightPushCallBack(void *ptr){
+//   if(digitalRead(goreSide) != LOW && moveButtonsPressed == false){
+//     digitalWrite(mjesalicaSwitch, HIGH);
+//     timeForStartMovingMixer = millis();
+//     moveToRight = true;
+//     goreSideWatch = true;
+//     moveButtonsPressed = true;
+//   }
   
-}
-void PosmakRightPopCallBack(void *ptr){
-  moveToRight = false;
-  goreSideWatch = false;
-  digitalWrite(goToRight, LOW);
-  digitalWrite(mjesalicaSwitch, LOW);
-  moveButtonsPressed = false;
-}
-void BackToDry(void *ptr){
-  CurrentPage = 1;
-  timeIntervalNextion = millis();
-}
-void BackToHome(void *ptr){
-  CurrentPage = 0;
-}
-void DecrementTempOfSeed(void *ptr){
-  maxSeedTemp = maxSeedTemp - 1;
-  if(CurrentPage == 3){
-    maxSeedTempDry.setValue((int)maxSeedTemp);
-    maxTermTempDry.setValue((int)maxTermTemp);
-  }else if(CurrentPage == 2){
-    maxSeedTempMenu.setValue((int)maxSeedTemp);
-    maxTermTempMenu.setValue((int)maxTermTemp);
-  }
+// }
+// void PosmakRightPopCallBack(void *ptr){
+//   moveToRight = false;
+//   goreSideWatch = false;
+//   digitalWrite(goToRight, LOW);
+//   digitalWrite(mjesalicaSwitch, LOW);
+//   moveButtonsPressed = false;
+// }
+// void BackToDry(void *ptr){
+//   CurrentPage = 1;
+//   timeIntervalNextion = millis();
+// }
+// void BackToHome(void *ptr){
+//   CurrentPage = 0;
+// }
+// void DecrementTempOfSeed(void *ptr){
+//   maxSeedTemp = maxSeedTemp - 1;
+//   if(CurrentPage == 3){
+//     maxSeedTempDry.setValue((int)maxSeedTemp);
+//     maxTermTempDry.setValue((int)maxTermTemp);
+//   }else if(CurrentPage == 2){
+//     maxSeedTempMenu.setValue((int)maxSeedTemp);
+//     maxTermTempMenu.setValue((int)maxTermTemp);
+//   }
 
-}
-void DecrementTempOfTerm(void *ptr){
-  maxTermTemp = maxTermTemp - 1;
-  if(CurrentPage == 3){
-    maxSeedTempDry.setValue((int)maxSeedTemp);
-    maxTermTempDry.setValue((int)maxTermTemp);
-  }else if(CurrentPage == 2){
-    maxSeedTempMenu.setValue((int)maxSeedTemp);
-    maxTermTempMenu.setValue((int)maxTermTemp);
-  }
+// }
+// void DecrementTempOfTerm(void *ptr){
+//   maxTermTemp = maxTermTemp - 1;
+//   if(CurrentPage == 3){
+//     maxSeedTempDry.setValue((int)maxSeedTemp);
+//     maxTermTempDry.setValue((int)maxTermTemp);
+//   }else if(CurrentPage == 2){
+//     maxSeedTempMenu.setValue((int)maxSeedTemp);
+//     maxTermTempMenu.setValue((int)maxTermTemp);
+//   }
 
-}
-void IncrementTempOfSeed(void *ptr){
-  maxSeedTemp = maxSeedTemp + 1;
-  if(CurrentPage == 3){
-    maxSeedTempDry.setValue((int)maxSeedTemp);
-    maxTermTempDry.setValue((int)maxTermTemp);
-  }else if(CurrentPage == 2){
-    maxSeedTempMenu.setValue((int)maxSeedTemp);
-    maxTermTempMenu.setValue((int)maxTermTemp);
-  }
+// }
+// void IncrementTempOfSeed(void *ptr){
+//   maxSeedTemp = maxSeedTemp + 1;
+//   if(CurrentPage == 3){
+//     maxSeedTempDry.setValue((int)maxSeedTemp);
+//     maxTermTempDry.setValue((int)maxTermTemp);
+//   }else if(CurrentPage == 2){
+//     maxSeedTempMenu.setValue((int)maxSeedTemp);
+//     maxTermTempMenu.setValue((int)maxTermTemp);
+//   }
 
-}
-void IncrementTempOfTerm(void *ptr){
-  maxTermTemp = maxTermTemp + 1;
-  if(CurrentPage == 3){
-    maxSeedTempDry.setValue((int)maxSeedTemp);
-    maxTermTempDry.setValue((int)maxTermTemp);
-  }else if(CurrentPage == 2){
-    maxSeedTempMenu.setValue((int)maxSeedTemp);
-    maxTermTempMenu.setValue((int)maxTermTemp);
-  }
+// }
+// void IncrementTempOfTerm(void *ptr){
+//   maxTermTemp = maxTermTemp + 1;
+//   if(CurrentPage == 3){
+//     maxSeedTempDry.setValue((int)maxSeedTemp);
+//     maxTermTempDry.setValue((int)maxTermTemp);
+//   }else if(CurrentPage == 2){
+//     maxSeedTempMenu.setValue((int)maxSeedTemp);
+//     maxTermTempMenu.setValue((int)maxTermTemp);
+//   }
 
-} 
+// } 
 
 void goLeft(){
     startLeft = false;
@@ -301,26 +301,27 @@ void setup() {
   
   Serial.begin(9600);  // Start serial comunication at baud=9600
 
-  nexInit();
+  // nexInit();
 
-  Start.attachPop(StartPopCallback, &Start);
-  PostavkeHome.attachPop(PostavkeHomePopCallBack, &PostavkeHome);
-  PosmakLeft.attachPush(PosmakLeftPushCallBack, &PosmakLeft);
-  PosmakLeft.attachPop(PosmakLeftPopCallBack, &PosmakLeft);
-  PosmakRight.attachPush(PosmakRightPushCallBack, &PosmakRight);
-  PosmakRight.attachPop(PosmakRightPopCallBack, &PosmakRight);
-  PostavkeDry.attachPop(PostavkeDryPopCallBack, &PostavkeDry);
-  EndDry.attachPop(EndDryPopCallBack, &EndDry);
-  DecrementTempOfSeedHome.attachPop(DecrementTempOfSeed, &DecrementTempOfSeedHome);
-  IncrementTempOfSeedHome.attachPop(IncrementTempOfSeed, &IncrementTempOfSeedHome);
-  DecrementTempOfTermHome.attachPop(DecrementTempOfTerm, &DecrementTempOfTermHome);
-  IncrementTempOfTermHome.attachPop(IncrementTempOfTerm, &IncrementTempOfTermHome);
-  DecrementTempOfSeedDry.attachPop(DecrementTempOfSeed, &DecrementTempOfSeedDry);
-  IncrementTempOfSeedDry.attachPop(IncrementTempOfSeed, &IncrementTempOfSeedDry);
-  DecrementTempOfTermDry.attachPop(DecrementTempOfTerm, &DecrementTempOfTermDry);
-  IncrementTempOfTermDry.attachPop(IncrementTempOfTerm, &IncrementTempOfTermDry);
-  BackFromSettingsHome.attachPop(BackToHome, &BackFromSettingsHome);
-  BackFromSettingsDry.attachPop(BackToDry, &BackFromSettingsDry);
+  // Start.attachPop(StartPopCallback, &Start);
+  // PostavkeHome.attachPop(PostavkeHomePopCallBack, &PostavkeHome);
+  // PosmakLeft.attachPush(PosmakLeftPushCallBack, &PosmakLeft);
+  // PosmakLeft.attachPop(PosmakLeftPopCallBack, &PosmakLeft);
+  // PosmakRight.attachPush(PosmakRightPushCallBack, &PosmakRight);
+  // PosmakRight.attachPop(PosmakRightPopCallBack, &PosmakRight);
+  // PostavkeDry.attachPop(PostavkeDryPopCallBack, &PostavkeDry);
+  // EndDry.attachPop(EndDryPopCallBack, &EndDry);
+  // DecrementTempOfSeedHome.attachPop(DecrementTempOfSeed, &DecrementTempOfSeedHome);
+  // IncrementTempOfSeedHome.attachPop(IncrementTempOfSeed, &IncrementTempOfSeedHome);
+  // DecrementTempOfTermHome.attachPop(DecrementTempOfTerm, &DecrementTempOfTermHome);
+  // IncrementTempOfTermHome.attachPop(IncrementTempOfTerm, &IncrementTempOfTermHome);
+  // DecrementTempOfSeedDry.attachPop(DecrementTempOfSeed, &DecrementTempOfSeedDry);
+  // IncrementTempOfSeedDry.attachPop(IncrementTempOfSeed, &IncrementTempOfSeedDry);
+  // DecrementTempOfTermDry.attachPop(DecrementTempOfTerm, &DecrementTempOfTermDry);
+  // IncrementTempOfTermDry.attachPop(IncrementTempOfTerm, &IncrementTempOfTermDry);
+  // BackFromSettingsHome.attachPop(BackToHome, &BackFromSettingsHome);
+  // BackFromSettingsDry.attachPop(BackToDry, &BackFromSettingsDry);
+
   //dbSerialPrintln("setup done");
   pinMode(termogenSide, INPUT);
   pinMode(goreSide, INPUT);
@@ -347,7 +348,7 @@ void setup() {
 void loop() {
 
 
-  //receivedChar = Serial.read();
+  receivedChar = Serial.read();
   //receive command for start
   if(receivedChar == 's'){
     if(startDrying == false){
@@ -448,7 +449,7 @@ void loop() {
         kosticePostigleTemp = false;
         
         //Serial.println("grije");
-      } else if(kosticePostigleTemp == false && (tempOfSeed < 30 || tempOfThermogen < 55)){
+      } else if(kosticePostigleTemp == false && (tempOfSeed < 30 || tempOfThermogen < maxTermTemp - 15)){
         digitalWrite(plamenikSwitch, HIGH);
         //Serial.println("grije");
       }
@@ -578,12 +579,24 @@ void loop() {
   }
 
 
-  if(CurrentPage == 1 && 1000 < millis() - timeIntervalNextion)
+  //if(CurrentPage == 1 && 1000 < millis() - timeIntervalNextion)
+  if( 1000 < millis() - timeIntervalNextion)
     {	
       calculateTime = (millis() - timeDrying)/1000/60;
-      TermNext.setValue(tempOfThermogen);
-      SeedNext.setValue(tempOfSeed);
-      TimeNext.setValue(calculateTime);
+      Serial.print("TermogenTemp:");
+      Serial.print(tempOfThermogen);
+      Serial.print("\n");
+      Serial.print("KosticeTemp:");
+      Serial.print(tempOfSeed);
+      Serial.print("\n");
+      Serial.print("Vrijeme:");
+      Serial.print(calculateTime);
+      Serial.print("\n");
+
+      // TermNext.setValue(tempOfThermogen);
+      // SeedNext.setValue(tempOfSeed);
+      // TimeNext.setValue(calculateTime);
+
       
       timeIntervalNextion = millis();
       
@@ -600,6 +613,8 @@ void loop() {
       startRight = true;
       time = millis();
       timeChangeDirection = millis();
+      Serial.print("Desno");
+      Serial.print("\n");
     //}
 }
 if(digitalRead(goreSide) == LOW && goreSideWatch == true && moveButtonsPressed == false){
@@ -613,20 +628,22 @@ if(digitalRead(goreSide) == LOW && goreSideWatch == true && moveButtonsPressed =
     startLeft = true;
     time = millis();
     timeChangeDirection = millis();
+    Serial.print("Lijevo");
+    Serial.print("\n");
   //}
 }
 
-nexLoop(nex_listen_list);
+//nexLoop(nex_listen_list);
 
 // // reset serial to enable communication
-//   if(!Serial){
-//       Serial.end();
-//       resetSerial = true;
-//       timeForSerialReset = millis();
-//     }
-//     if(resetSerial == true && timeForSerialResetInterval <= millis() - timeForSerialReset){
-//       Serial.begin(9600);
-//     }
+  if(!Serial){
+      Serial.end();
+      resetSerial = true;
+      timeForSerialReset = millis();
+    }
+    if(resetSerial == true && timeForSerialResetInterval <= millis() - timeForSerialReset){
+      Serial.begin(9600);
+    }
 }
 
 
