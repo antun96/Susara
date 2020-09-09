@@ -2,9 +2,11 @@
 #include <Wire.h>
 #include <Adafruit_MLX90614.h>
 #include <max6675.h>
-#include <Nextion.h>
-#include <SD.h>
-#include <SoftwareSerial.h>
+
+#include "EasyNextionLibrary.h" 
+
+EasyNex myNex(Serial);
+
 
 unsigned long time;
 unsigned long timeForOtherStuff;
@@ -111,90 +113,90 @@ int CurrentPage = 0;
 
 
 
-NexButton Start = NexButton(0, 1, "b0");
-NexButton PostavkeHome = NexButton(0, 2, "b1");
-NexButton PosmakLeft = NexButton(0, 3, "b2");
-NexButton PosmakRight = NexButton(0, 4, "b3");
-NexButton PostavkeDry = NexButton(1, 2, "b1");
-NexButton EndDry = NexButton(1, 1, "b0");
-NexButton DecrementTempOfSeedHome = NexButton(2, 2, "b0");
-NexButton IncrementTempOfSeedHome = NexButton(2, 3, "b1");
-NexButton DecrementTempOfTermHome = NexButton(2, 7, "b2");
-NexButton IncrementTempOfTermHome = NexButton(2, 8, "b3");
-NexButton BackFromSettingsHome = NexButton(2, 10, "b4");
-NexButton BackFromSettingsDry = NexButton(3, 10, "b4");
-NexButton DecrementTempOfSeedDry = NexButton(3, 2, "b0");
-NexButton IncrementTempOfSeedDry = NexButton(3, 3, "b1");
-NexButton DecrementTempOfTermDry = NexButton(3, 7, "b2");
-NexButton IncrementTempOfTermDry = NexButton(3, 8, "b3");
-NexNumber TermNext = NexNumber(1, 7, "n0");
-NexNumber SeedNext = NexNumber(1, 8, "n1");
-NexNumber TimeNext = NexNumber(1, 9, "n2");
-NexNumber maxTermTempMenu = NexNumber(2, 9, "n1");
-NexNumber maxTermTempDry = NexNumber(3, 9, "n1");
-NexNumber maxSeedTempMenu = NexNumber(2, 4, "n0");
-NexNumber maxSeedTempDry = NexNumber(3, 4, "n0");
+// NexButton Start = NexButton(0, 1, "b0");
+// NexButton PostavkeHome = NexButton(0, 2, "b1");
+// NexButton PosmakLeft = NexButton(0, 3, "b2");
+// NexButton PosmakRight = NexButton(0, 4, "b3");
+// NexButton PostavkeDry = NexButton(1, 2, "b1");
+// NexButton EndDry = NexButton(1, 1, "b0");
+// NexButton DecrementTempOfSeedHome = NexButton(2, 2, "b0");
+// NexButton IncrementTempOfSeedHome = NexButton(2, 3, "b1");
+// NexButton DecrementTempOfTermHome = NexButton(2, 7, "b2");
+// NexButton IncrementTempOfTermHome = NexButton(2, 8, "b3");
+// NexButton BackFromSettingsHome = NexButton(2, 10, "b4");
+// NexButton BackFromSettingsDry = NexButton(3, 10, "b4");
+// NexButton DecrementTempOfSeedDry = NexButton(3, 2, "b0");
+// NexButton IncrementTempOfSeedDry = NexButton(3, 3, "b1");
+// NexButton DecrementTempOfTermDry = NexButton(3, 7, "b2");
+// NexButton IncrementTempOfTermDry = NexButton(3, 8, "b3");
+// NexNumber TermNext = NexNumber(1, 7, "n0");
+// NexNumber SeedNext = NexNumber(1, 8, "n1");
+// NexNumber TimeNext = NexNumber(1, 9, "n2");
+// NexNumber maxTermTempMenu = NexNumber(2, 9, "n1");
+// NexNumber maxTermTempDry = NexNumber(3, 9, "n1");
+// NexNumber maxSeedTempMenu = NexNumber(2, 4, "n0");
+// NexNumber maxSeedTempDry = NexNumber(3, 4, "n0");
 
 
 
-NexPage page0 = NexPage(0, 0, "page0");  // Page added as a touch event
-NexPage page1 = NexPage(1, 0, "page1");  // Page added as a touch event
-NexPage page2 = NexPage(2, 0, "page2");  // Page added as a touch event
-NexPage page3 = NexPage(3, 0, "page3");
+// NexPage page0 = NexPage(0, 0, "page0");  // Page added as a touch event
+// NexPage page1 = NexPage(1, 0, "page1");  // Page added as a touch event
+// NexPage page2 = NexPage(2, 0, "page2");  // Page added as a touch event
+// NexPage page3 = NexPage(3, 0, "page3");
 
-NexTouch *nex_listen_list[] = {
-  &Start,
-  &PostavkeHome,
-  &PosmakLeft,
-  &PosmakRight,
-  &PostavkeDry,
-  &EndDry,
-  &DecrementTempOfSeedHome,
-  &IncrementTempOfSeedHome,
-  &DecrementTempOfTermHome,
-  &IncrementTempOfTermHome,
-  &BackFromSettingsHome,
-  &BackFromSettingsDry,
-  &DecrementTempOfSeedDry,
-  &IncrementTempOfSeedDry,
-  &DecrementTempOfTermDry,
-  &IncrementTempOfTermDry,
-  &TermNext,
-  &SeedNext,
-  &TimeNext,
-  &maxTermTempMenu,
-  &maxTermTempDry,
-  &maxSeedTempMenu,
-  &maxSeedTempDry,
-  NULL
-};
+// NexTouch *nex_listen_list[] = {
+//   &Start,
+//   &PostavkeHome,
+//   &PosmakLeft,
+//   &PosmakRight,
+//   &PostavkeDry,
+//   &EndDry,
+//   &DecrementTempOfSeedHome,
+//   &IncrementTempOfSeedHome,
+//   &DecrementTempOfTermHome,
+//   &IncrementTempOfTermHome,
+//   &BackFromSettingsHome,
+//   &BackFromSettingsDry,
+//   &DecrementTempOfSeedDry,
+//   &IncrementTempOfSeedDry,
+//   &DecrementTempOfTermDry,
+//   &IncrementTempOfTermDry,
+//   &TermNext,
+//   &SeedNext,
+//   &TimeNext,
+//   &maxTermTempMenu,
+//   &maxTermTempDry,
+//   &maxSeedTempMenu,
+//   &maxSeedTempDry,
+//   NULL
+// };
 
-void StartPopCallback(void *ptr)  // Release event for button b1
-{
+void trigger1(){      //start drying
   stopDrying = false;
   startDrying = true;
   doneBooting = false;
   CurrentPage = 1;
 }
-void EndDryPopCallBack(void *ptr){
+
+void trigger8(){    //stop drying
   startDrying = false;
   doneBooting = false;
   stopDrying = true;
   CurrentPage = 0;
 }
-void PostavkeHomePopCallBack(void *ptr){
+void trigger2(){    //postavke from home
   CurrentPage = 2;
-  maxSeedTempMenu.setValue((int)maxSeedTemp);
-  maxTermTempMenu.setValue((int)maxTermTemp);
+  myNex.writeNum("n0.val", (int)maxSeedTemp);
+  myNex.writeNum("n1.val", (int)maxTermTemp);
 
 }
-void PostavkeDryPopCallBack(void *ptr){
+void trigger7(){    //postavke from drying
   CurrentPage = 3;
-  maxSeedTempDry.setValue((int)maxSeedTemp);
-  maxTermTempDry.setValue((int)maxTermTemp);
+  myNex.writeNum("n0.val", (int)maxSeedTemp);
+  myNex.writeNum("n1.val", (int)maxTermTemp);
 
 }
-void PosmakLeftPushCallBack(void *ptr){
+void trigger3(){    //move to left
   if(digitalRead(termogenSide) != LOW && moveButtonsPressed == false){
     digitalWrite(mjesalicaSwitch, HIGH);
     timeForStartMovingMixer = millis();
@@ -204,7 +206,7 @@ void PosmakLeftPushCallBack(void *ptr){
   }
   
 }
-void PosmakLeftPopCallBack(void *ptr){
+void trigger4(){    //stop moving left
   moveToLeft = false;
   termogenSideWatch = false;
   digitalWrite(goToLeft, LOW);
@@ -212,7 +214,7 @@ void PosmakLeftPopCallBack(void *ptr){
   moveButtonsPressed = false;
   
 }
-void PosmakRightPushCallBack(void *ptr){
+void trigger5(){    //move to right
   if(digitalRead(goreSide) != LOW && moveButtonsPressed == false){
     digitalWrite(mjesalicaSwitch, HIGH);
     timeForStartMovingMixer = millis();
@@ -222,61 +224,48 @@ void PosmakRightPushCallBack(void *ptr){
   }
   
 }
-void PosmakRightPopCallBack(void *ptr){
+void trigger6(){    //stop move to right
   moveToRight = false;
   goreSideWatch = false;
   digitalWrite(goToRight, LOW);
   digitalWrite(mjesalicaSwitch, LOW);
   moveButtonsPressed = false;
 }
-void BackToDry(void *ptr){
+void trigger14(void *ptr){    //back from settings to drying
   CurrentPage = 1;
   timeIntervalNextion = millis();
 }
-void BackToHome(void *ptr){
+void trigger9(void *ptr){   //back from settings to home
   CurrentPage = 0;
 }
-void DecrementTempOfSeed(void *ptr){
+void trigger10(){    //DecrementTempOfSeed
   maxSeedTemp = maxSeedTemp - 1;
-  if(CurrentPage == 3){
-    maxSeedTempDry.setValue((int)maxSeedTemp);
-    maxTermTempDry.setValue((int)maxTermTemp);
-  }else if(CurrentPage == 2){
-    maxSeedTempMenu.setValue((int)maxSeedTemp);
-    maxTermTempMenu.setValue((int)maxTermTemp);
+  if(CurrentPage == 3 || CurrentPage == 2){
+    myNex.writeNum("n0.val", (int)maxSeedTemp);
+    myNex.writeNum("n1.val", (int)maxTermTemp);
   }
-
 }
-void DecrementTempOfTerm(void *ptr){
+void trigger12(){   //DecrementTempOfTerm
   maxTermTemp = maxTermTemp - 1;
-  if(CurrentPage == 3){
-    maxSeedTempDry.setValue((int)maxSeedTemp);
-    maxTermTempDry.setValue((int)maxTermTemp);
-  }else if(CurrentPage == 2){
-    maxSeedTempMenu.setValue((int)maxSeedTemp);
-    maxTermTempMenu.setValue((int)maxTermTemp);
+  if(CurrentPage == 3 || CurrentPage == 2){
+    myNex.writeNum("n0.val", (int)maxSeedTemp);
+    myNex.writeNum("n1.val", (int)maxTermTemp);
   }
 
 }
-void IncrementTempOfSeed(void *ptr){
+void trigger11(){   //IncrementTempOfSeed
   maxSeedTemp = maxSeedTemp + 1;
-  if(CurrentPage == 3){
-    maxSeedTempDry.setValue((int)maxSeedTemp);
-    maxTermTempDry.setValue((int)maxTermTemp);
-  }else if(CurrentPage == 2){
-    maxSeedTempMenu.setValue((int)maxSeedTemp);
-    maxTermTempMenu.setValue((int)maxTermTemp);
+  if(CurrentPage == 3 || CurrentPage == 2){
+    myNex.writeNum("n0.val", (int)maxSeedTemp);
+    myNex.writeNum("n1.val", (int)maxTermTemp);
   }
 
 }
-void IncrementTempOfTerm(void *ptr){
+void trigger13(){    //IncrementTempOfTerm
   maxTermTemp = maxTermTemp + 1;
-  if(CurrentPage == 3){
-    maxSeedTempDry.setValue((int)maxSeedTemp);
-    maxTermTempDry.setValue((int)maxTermTemp);
-  }else if(CurrentPage == 2){
-    maxSeedTempMenu.setValue((int)maxSeedTemp);
-    maxTermTempMenu.setValue((int)maxTermTemp);
+  if(CurrentPage == 3 || CurrentPage == 2){
+    myNex.writeNum("n0.val", (int)maxSeedTemp);
+    myNex.writeNum("n1.val", (int)maxTermTemp);
   }
 
 } 
@@ -299,30 +288,10 @@ void goRight(){
 
 void setup() { 
   
-  Serial.begin(9600);  // Start serial comunication at baud=9600
+  //Serial.begin(9600);  // Start serial comunication at baud=9600
 
-  nexInit();
+  myNex.begin(9600);
 
-  // Start.attachPop(StartPopCallback, &Start);
-  // PostavkeHome.attachPop(PostavkeHomePopCallBack, &PostavkeHome);
-  // PosmakLeft.attachPush(PosmakLeftPushCallBack, &PosmakLeft);
-  // PosmakLeft.attachPop(PosmakLeftPopCallBack, &PosmakLeft);
-  // PosmakRight.attachPush(PosmakRightPushCallBack, &PosmakRight);
-  // PosmakRight.attachPop(PosmakRightPopCallBack, &PosmakRight);
-  // PostavkeDry.attachPop(PostavkeDryPopCallBack, &PostavkeDry);
-  // EndDry.attachPop(EndDryPopCallBack, &EndDry);
-  // DecrementTempOfSeedHome.attachPop(DecrementTempOfSeed, &DecrementTempOfSeedHome);
-  // IncrementTempOfSeedHome.attachPop(IncrementTempOfSeed, &IncrementTempOfSeedHome);
-  // DecrementTempOfTermHome.attachPop(DecrementTempOfTerm, &DecrementTempOfTermHome);
-  // IncrementTempOfTermHome.attachPop(IncrementTempOfTerm, &IncrementTempOfTermHome);
-  // DecrementTempOfSeedDry.attachPop(DecrementTempOfSeed, &DecrementTempOfSeedDry);
-  // IncrementTempOfSeedDry.attachPop(IncrementTempOfSeed, &IncrementTempOfSeedDry);
-  // DecrementTempOfTermDry.attachPop(DecrementTempOfTerm, &DecrementTempOfTermDry);
-  // IncrementTempOfTermDry.attachPop(IncrementTempOfTerm, &IncrementTempOfTermDry);
-  // BackFromSettingsHome.attachPop(BackToHome, &BackFromSettingsHome);
-  // BackFromSettingsDry.attachPop(BackToDry, &BackFromSettingsDry);
-
-  //dbSerialPrintln("setup done");
   pinMode(termogenSide, INPUT);
   pinMode(goreSide, INPUT);
   pinMode(goToLeft, OUTPUT);
@@ -348,7 +317,7 @@ void setup() {
 void loop() {
 
 
-  receivedChar = Serial.read();
+  //receivedChar = Serial.read();
   //receive command for start
   if(receivedChar == 's'){
     if(startDrying == false){
@@ -580,32 +549,26 @@ void loop() {
 
 
   //if(CurrentPage == 1 && 1000 < millis() - timeIntervalNextion)
-  if( 1000 < millis() - timeIntervalNextion)
-    {	
+  if(CurrentPage == 1 && 1000 < millis() - timeIntervalNextion){	
       calculateTime = (millis() - timeDrying)/1000/60;
-      Serial.print("TermogenTemp:");
-      Serial.print(tempOfThermogen);
-      Serial.print("\n");
-      Serial.print("KosticeTemp:");
-      Serial.print(tempOfSeed);
-      Serial.print("\n");
-      Serial.print("Vrijeme:");
-      Serial.print(calculateTime);
-      Serial.print("\n");
+      // Serial.print("TermogenTemp:");
+      // Serial.print(tempOfThermogen);
+      // Serial.print("\n");
+      // Serial.print("KosticeTemp:");
+      // Serial.print(tempOfSeed);
+      // Serial.print("\n");
+      // Serial.print("Vrijeme:");
+      // Serial.print(calculateTime);
+      // Serial.print("\n");
+      myNex.writeNum("n0.val", (int)tempOfThermogen);
+      myNex.writeNum("n1.val", (int)tempOfSeed);
+      myNex.writeNum("n2.val", (int)calculateTime);
 
-      TermNext.setValue(tempOfThermogen);
-      SeedNext.setValue(tempOfSeed);
-      TimeNext.setValue(calculateTime);
-
-      
       timeIntervalNextion = millis();
       
     }
 
   if(digitalRead(termogenSide) == LOW && termogenSideWatch == true && moveButtonsPressed == false){
-    //if(lie == false){
-      // lie = true;
-      // lieTime = millis();
       digitalWrite(goToLeft, LOW);
       termogenSideWatch = false;
       moveToLeft = false;
@@ -613,14 +576,10 @@ void loop() {
       startRight = true;
       time = millis();
       timeChangeDirection = millis();
-      Serial.print("Desno");
-      Serial.print("\n");
-    //}
-}
+      // Serial.print("Desno");
+      // Serial.print("\n");
+  }
 if(digitalRead(goreSide) == LOW && goreSideWatch == true && moveButtonsPressed == false){
-  //if(lie == false){
-    // lie = true;
-    // lieTime = millis();
     digitalWrite(goToRight, LOW);
     goreSideWatch = false;
     moveToRight = false;
@@ -628,22 +587,21 @@ if(digitalRead(goreSide) == LOW && goreSideWatch == true && moveButtonsPressed =
     startLeft = true;
     time = millis();
     timeChangeDirection = millis();
-    Serial.print("Lijevo");
-    Serial.print("\n");
-  //}
+    // Serial.print("Lijevo");
+    // Serial.print("\n");
 }
-
+myNex.NextionListen();
 //nexLoop(nex_listen_list);
 
 // // reset serial to enable communication
-  if(!Serial){
-      Serial.end();
-      resetSerial = true;
-      timeForSerialReset = millis();
-    }
-    if(resetSerial == true && timeForSerialResetInterval <= millis() - timeForSerialReset){
-      Serial.begin(9600);
-    }
+// if(!Serial){
+//     Serial.end();
+//     resetSerial = true;
+//     timeForSerialReset = millis();
+//   }
+// if(resetSerial == true && timeForSerialResetInterval <= millis() - timeForSerialReset){
+//   Serial.begin(9600);
+// }
 }
 
 
