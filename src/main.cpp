@@ -1,12 +1,9 @@
 //#include <Arduino.h>
 #include <Wire.h>
-#include <Adafruit_MLX90614.h>
+//#include <Adafruit_MLX90614.h>
 #include <max6675.h>
 
-#include "EasyNextionLibrary.h" 
-
-EasyNex myNex(Serial);
-
+//#include <avr/wdt.h>
 
 unsigned long time;
 unsigned long timeForOtherStuff;
@@ -107,7 +104,7 @@ int stageNumber = 0;
 char send[6];
 
 MAX6675 thermocouple(thermoSCK, thermoCS, thermoSO);
-Adafruit_MLX90614 mlx = Adafruit_MLX90614();
+//Adafruit_MLX90614 mlx = Adafruit_MLX90614();
 
 int CurrentPage = 0;
 
@@ -186,14 +183,14 @@ void trigger8(){    //stop drying
 }
 void trigger2(){    //postavke from home
   CurrentPage = 2;
-  myNex.writeNum("n0.val", (int)maxSeedTemp);
-  myNex.writeNum("n1.val", (int)maxTermTemp);
+  // myNex.writeNum("n0.val", (int)maxSeedTemp);
+  // myNex.writeNum("n1.val", (int)maxTermTemp);
 
 }
 void trigger7(){    //postavke from drying
   CurrentPage = 3;
-  myNex.writeNum("n0.val", (int)maxSeedTemp);
-  myNex.writeNum("n1.val", (int)maxTermTemp);
+  // myNex.writeNum("n0.val", (int)maxSeedTemp);
+  // myNex.writeNum("n1.val", (int)maxTermTemp);
 
 }
 void trigger3(){    //move to left
@@ -241,31 +238,31 @@ void trigger9(void *ptr){   //back from settings to home
 void trigger10(){    //DecrementTempOfSeed
   maxSeedTemp = maxSeedTemp - 1;
   if(CurrentPage == 3 || CurrentPage == 2){
-    myNex.writeNum("n0.val", (int)maxSeedTemp);
-    myNex.writeNum("n1.val", (int)maxTermTemp);
+    // myNex.writeNum("n0.val", (int)maxSeedTemp);
+    // myNex.writeNum("n1.val", (int)maxTermTemp);
   }
 }
 void trigger12(){   //DecrementTempOfTerm
   maxTermTemp = maxTermTemp - 1;
   if(CurrentPage == 3 || CurrentPage == 2){
-    myNex.writeNum("n0.val", (int)maxSeedTemp);
-    myNex.writeNum("n1.val", (int)maxTermTemp);
+    // myNex.writeNum("n0.val", (int)maxSeedTemp);
+    // myNex.writeNum("n1.val", (int)maxTermTemp);
   }
 
 }
 void trigger11(){   //IncrementTempOfSeed
   maxSeedTemp = maxSeedTemp + 1;
   if(CurrentPage == 3 || CurrentPage == 2){
-    myNex.writeNum("n0.val", (int)maxSeedTemp);
-    myNex.writeNum("n1.val", (int)maxTermTemp);
+    // myNex.writeNum("n0.val", (int)maxSeedTemp);
+    // myNex.writeNum("n1.val", (int)maxTermTemp);
   }
 
 }
 void trigger13(){    //IncrementTempOfTerm
   maxTermTemp = maxTermTemp + 1;
   if(CurrentPage == 3 || CurrentPage == 2){
-    myNex.writeNum("n0.val", (int)maxSeedTemp);
-    myNex.writeNum("n1.val", (int)maxTermTemp);
+    // myNex.writeNum("n0.val", (int)maxSeedTemp);
+    // myNex.writeNum("n1.val", (int)maxTermTemp);
   }
 
 } 
@@ -275,6 +272,7 @@ void goLeft(){
     digitalWrite(goToRight, LOW);
     digitalWrite(goToLeft, HIGH);
     timeFromLastDirectionChange = millis();
+    termogenSideWatch = true;
     directionChangeToLeft = true;
 }
 void goRight(){
@@ -282,15 +280,16 @@ void goRight(){
     digitalWrite(goToLeft, LOW);
     digitalWrite(goToRight, HIGH);
     timeFromLastDirectionChange = millis();
+    goreSideWatch = true;
     directionChangeToRight = true;
 }
 
 
 void setup() { 
   
-  //Serial.begin(9600);  // Start serial comunication at baud=9600
+  Serial.begin(9600);  // Start serial comunication at baud=9600
 
-  myNex.begin(9600);
+  //myNex.begin(9600);
 
   pinMode(termogenSide, INPUT);
   pinMode(goreSide, INPUT);
@@ -308,16 +307,20 @@ void setup() {
   digitalWrite(plamenikSwitch, LOW);
   digitalWrite(mjesalicaSwitch, LOW);
 
-  Wire.setClock(10000);
-  mlx.begin();
+  //Wire.setClock(10000);
+  //mlx.begin();
   timeForOtherStuff = millis();
   timeIntervalNextion = millis();
+
+  stopDrying = false;
+  startDrying = true;
+  doneBooting = false;
 }
 
 void loop() {
 
 
-  //receivedChar = Serial.read();
+  receivedChar = Serial.read();
   //receive command for start
   if(receivedChar == 's'){
     if(startDrying == false){
@@ -396,10 +399,17 @@ void loop() {
     
     //procedure after boot is completed
   }else if(startDrying == true && stopDrying == false && doneBooting == true){
-    if(timeForOtherStuffInterval / 5 <= millis() - timeForOtherStuff){
+    if(timeForOtherStuffInterval <= millis() - timeForOtherStuff){
+      Serial.print("citam termogen");
       tempOfThermogen = thermocouple.readCelsius();
-      tempOfSeed = mlx.readObjectTempC();
-      tempOutside = mlx.readAmbientTempC();
+      Serial.println(tempOfThermogen);
+      // Serial.println("citam kostice");
+      // tempOfSeed = mlx.readObjectTempC();
+      // Serial.println(tempOfSeed);
+      // Serial.println("citam vanjsku temp");
+      // tempOutside = mlx.readAmbientTempC();
+      // Serial.println(tempOutside);
+      // Serial.println("Procitao");
       
       if(tempOfSeed > maxSeedTemp && kosticePostigleTemp == false){
       kosticePostigleTemp = true;
@@ -423,16 +433,16 @@ void loop() {
         //Serial.println("grije");
       }
       //logic to find out when to shutdown dryer
-      if(numberOfShutdowns >= 5){
-        if(timeOfBurnerShutdown[numberOfShutdowns - 1] - timeOfBurnerShutdown[numberOfShutdowns - 5] < 3600000){
-          startDrying = false;
-          stopDrying = true;
-          doneBooting = false;
-          digitalWrite(plamenikSwitch, LOW);
-          timeOfShutdownStart = millis();
-        }
+      // if(numberOfShutdowns >= 5){
+      //   if(timeOfBurnerShutdown[numberOfShutdowns - 1] - timeOfBurnerShutdown[numberOfShutdowns - 5] < 3600000){
+      //     startDrying = false;
+      //     stopDrying = true;
+      //     doneBooting = false;
+      //     digitalWrite(plamenikSwitch, LOW);
+      //     timeOfShutdownStart = millis();
+      //   }
      
-      }
+      // }
         timeForOtherStuff = millis();
     }
 
@@ -446,10 +456,14 @@ void loop() {
 //shutdown procedure
   }else if(startDrying == false && stopDrying == true && doneBooting == false){
     //digitalWrite(plamenikSwitch, LOW);
-    if(2000 < millis() - timeForOtherStuff){
+    if(5000 < millis() - timeForOtherStuff){
+      Serial.println("citam termogen");
       tempOfThermogen = thermocouple.readCelsius();
-      tempOfSeed = mlx.readObjectTempC();
-      tempOutside = mlx.readAmbientTempC();
+      // Serial.println("citam kostice");
+      // tempOfSeed = mlx.readObjectTempC();
+      // Serial.println("citam vanjsku temp");
+      // tempOutside = mlx.readAmbientTempC();
+      // Serial.println("Procitao");
       
       timeForOtherStuff = millis();
 
@@ -534,39 +548,36 @@ void loop() {
     }
   }
 
-  if(directionChangeToLeft == true && 500 <= millis() - timeFromLastDirectionChange){
-    termogenSideWatch = true;
-    directionChangeToLeft = false;
-  }
+  // if(directionChangeToLeft == true && 500 <= millis() - timeFromLastDirectionChange){
+  //   termogenSideWatch = true;
+  //   directionChangeToLeft = false;
+  // }
 
-  if(directionChangeToRight == true && 500 <= millis() - timeFromLastDirectionChange){
-    goreSideWatch = true;
-    directionChangeToRight = false;
-  }
-  if(lie == true && timeInterval + 750 < millis() - lieTime){
-    lie = false;
-  }
+  // if(directionChangeToRight == true && 500 <= millis() - timeFromLastDirectionChange){
+  //   goreSideWatch = true;
+  //   directionChangeToRight = false;
+  // }
 
 
   //if(CurrentPage == 1 && 1000 < millis() - timeIntervalNextion)
-  if(CurrentPage == 1 && 1000 < millis() - timeIntervalNextion){	
-      calculateTime = (millis() - timeDrying)/1000/60;
-      // Serial.print("TermogenTemp:");
-      // Serial.print(tempOfThermogen);
-      // Serial.print("\n");
-      // Serial.print("KosticeTemp:");
-      // Serial.print(tempOfSeed);
-      // Serial.print("\n");
-      // Serial.print("Vrijeme:");
-      // Serial.print(calculateTime);
-      // Serial.print("\n");
-      myNex.writeNum("n0.val", (int)tempOfThermogen);
-      myNex.writeNum("n1.val", (int)tempOfSeed);
-      myNex.writeNum("n2.val", (int)calculateTime);
+  // if(5000 < millis() - timeIntervalNextion){	
+  //     calculateTime = (millis() - timeDrying)/1000/60;
+  //     Serial.print("TermogenTemp:");
+  //     Serial.print(tempOfThermogen);
+  //     Serial.print("\n");
+  //     Serial.print("KosticeTemp:");
+  //     Serial.print(tempOfSeed);
+  //     Serial.print("\n");
+  //     Serial.print("Vrijeme:");
+  //     Serial.print(calculateTime);
+  //     Serial.print("\n");
+  //     // myNex.writeNum("n0.val", (int)tempOfThermogen);
+  //     // myNex.writeNum("n1.val", (int)tempOfSeed);
+  //     // myNex.writeNum("n2.val", (int)calculateTime);
 
-      timeIntervalNextion = millis();
+  //     timeIntervalNextion = millis();
       
-    }
+  //   }
 
   if(digitalRead(termogenSide) == LOW && termogenSideWatch == true && moveButtonsPressed == false){
       digitalWrite(goToLeft, LOW);
@@ -576,8 +587,8 @@ void loop() {
       startRight = true;
       time = millis();
       timeChangeDirection = millis();
-      // Serial.print("Desno");
-      // Serial.print("\n");
+      Serial.print("Desno");
+      Serial.print("\n");
   }
 if(digitalRead(goreSide) == LOW && goreSideWatch == true && moveButtonsPressed == false){
     digitalWrite(goToRight, LOW);
@@ -587,21 +598,24 @@ if(digitalRead(goreSide) == LOW && goreSideWatch == true && moveButtonsPressed =
     startLeft = true;
     time = millis();
     timeChangeDirection = millis();
-    // Serial.print("Lijevo");
-    // Serial.print("\n");
+    Serial.print("Lijevo");
+    Serial.print("\n");
 }
-myNex.NextionListen();
+//myNex.NextionListen();
 //nexLoop(nex_listen_list);
 
-// // reset serial to enable communication
-// if(!Serial){
-//     Serial.end();
-//     resetSerial = true;
-//     timeForSerialReset = millis();
-//   }
-// if(resetSerial == true && timeForSerialResetInterval <= millis() - timeForSerialReset){
-//   Serial.begin(9600);
-// }
+// reset serial to enable communication
+if(!Serial){
+    Serial.end();
+    resetSerial = true;
+    timeForSerialReset = millis();
+  }
+if(resetSerial == true && timeForSerialResetInterval <= millis() - timeForSerialReset){
+  Serial.begin(9600);
+}
+
+
+
 }
 
 
