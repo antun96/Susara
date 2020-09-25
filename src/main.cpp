@@ -1,10 +1,11 @@
 //#include <Arduino.h>
 #include <Wire.h>
-#include <Adafruit_MLX90614.h>
+//#include <Adafruit_MLX90614.h>
 #include <max6675.h>
 #include <EasyNextionLibrary.h>
 #include <avr/wdt.h>
 #include <EEPROM.h>
+
 
 
 EasyNex myNex(Serial);
@@ -83,8 +84,9 @@ String order;
 
 bool startVentTermogen = false;
 bool startMixer = false;
+bool termogenOverheated = false;
 double tempOfThermogen;
-double tempOfSeed;
+double tempOfSeed = 0;
 double tempOutside;
 bool kosticePostigleTemp = false;
 unsigned long timeDrying;
@@ -102,16 +104,16 @@ char receivedChar;
 bool newData = false;
 
 float maxSeedTemp = 55;
-float maxTermTemp = 48;
+float maxTermTemp = 46;
 
 int stageNumber = 0;
 char send[6];
 
 MAX6675 thermocouple(thermoSCK, thermoCS, thermoSO);
-Adafruit_MLX90614 mlx = Adafruit_MLX90614();
+//Adafruit_MLX90614 mlx = Adafruit_MLX90614();
 
 int CurrentPage = 0;
-
+int currentPageAddress = 0;
 
 
 // NexButton Start = NexButton(0, 1, "b0");
@@ -177,6 +179,7 @@ void trigger1(){      //start drying
   startDrying = true;
   doneBooting = false;
   CurrentPage = 1;
+  EEPROM.update(currentPageAddress, CurrentPage);
 }
 
 void trigger8(){    //stop drying
@@ -184,6 +187,7 @@ void trigger8(){    //stop drying
   doneBooting = false;
   stopDrying = true;
   CurrentPage = 0;
+  EEPROM.update(currentPageAddress, CurrentPage);
 }
 void trigger2(){    //postavke from home
   CurrentPage = 2;
@@ -235,9 +239,11 @@ void trigger6(){    //stop move to right
 void trigger14(void *ptr){    //back from settings to drying
   CurrentPage = 1;
   timeIntervalNextion = millis();
+  EEPROM.update(currentPageAddress, CurrentPage);
 }
 void trigger9(void *ptr){   //back from settings to home
   CurrentPage = 0;
+  EEPROM.update(currentPageAddress, CurrentPage);
 }
 void trigger10(){    //DecrementTempOfSeed
   maxSeedTemp = maxSeedTemp - 1;
@@ -316,17 +322,21 @@ void setup() {
   digitalWrite(plamenikSwitch, LOW);
   digitalWrite(mjesalicaSwitch, LOW);
 
-  Wire.setClock(10000);
-  mlx.begin();
+  //Wire.setClock(10000);
+  // mlx.begin();
   timeForOtherStuff = millis();
   timeIntervalNextion = millis();
   time = millis();
 
-  CurrentPage = myNex.currentPageId;
+  //CurrentPage = myNex.readNumber("dp");
+  CurrentPage = EEPROM.read(currentPageAddress);
   if(CurrentPage == 1){
     digitalWrite(termogenVentSwitch, HIGH);
+    delay(5000);
     digitalWrite(plamenikSwitch, HIGH);
     digitalWrite(mjesalicaSwitch, HIGH);
+    startMixer = true;
+    delay(2000);
     if(digitalRead(termogenSide) != LOW){
       goLeft();
     }else if(digitalRead(goreSide) != LOW){
@@ -337,7 +347,7 @@ void setup() {
     doneBooting = true;
   }
 
-  wdt_enable(WDTO_60MS);
+  wdt_enable(WDTO_120MS);
 
 }
 
@@ -400,10 +410,10 @@ void loop() {
       tempOfThermogen = thermocouple.readCelsius();
       // Serial.println(tempOfThermogen);
       // Serial.println("citam kostice");
-      tempOfSeed = mlx.readObjectTempC();
+      //tempOfSeed = mlx.readObjectTempC();
       // Serial.println(tempOfSeed);
       // Serial.println("citam vanjsku temp");
-      tempOutside = mlx.readAmbientTempC();
+      //tempOutside = mlx.readAmbientTempC();
       // Serial.println(tempOutside);
       // Serial.println("Procitao");
       
@@ -417,6 +427,7 @@ void loop() {
 
       if(tempOfThermogen > maxTermTemp || kosticePostigleTemp == true){
       digitalWrite(plamenikSwitch, LOW);
+      termogenOverheated = true;
       //Serial.println("hladi");
       }
       else if(kosticePostigleTemp == true && tempOfSeed <= 30){
@@ -424,19 +435,22 @@ void loop() {
         kosticePostigleTemp = false;
         
         //Serial.println("grije");
-      } else if(kosticePostigleTemp == false && (tempOfSeed < 30 || tempOfThermogen < maxTermTemp - 15)){
+      // } else if(kosticePostigleTemp == false && (tempOfSeed < 30 || tempOfThermogen < maxTermTemp - 15)){
+      } else if(kosticePostigleTemp == false && termogenOverheated == true && tempOfThermogen < maxTermTemp - 15){
+
         digitalWrite(plamenikSwitch, HIGH);
+        termogenOverheated = false;
         //Serial.println("grije");
       }
       //logic to find out when to shutdown dryer
-      if(numberOfShutdowns >= 5){
-        if(timeOfBurnerShutdown[numberOfShutdowns - 1] - timeOfBurnerShutdown[numberOfShutdowns - 5] < 3600000){
-          startDrying = false;
-          stopDrying = true;
-          doneBooting = false;
-          digitalWrite(plamenikSwitch, LOW);
-          timeOfShutdownStart = millis();
-        }
+      // if(numberOfShutdowns >= 5){
+      //   if(timeOfBurnerShutdown[numberOfShutdowns - 1] - timeOfBurnerShutdown[numberOfShutdowns - 5] < 3600000){
+      //     startDrying = false;
+      //     stopDrying = true;
+      //     doneBooting = false;
+      //     digitalWrite(plamenikSwitch, LOW);
+      //     timeOfShutdownStart = millis();
+      //   }
      
       // }
         timeForOtherStuff = millis();
