@@ -1,6 +1,6 @@
 //#include <Arduino.h>
 #include <Wire.h>
-//#include <Adafruit_MLX90614.h>
+#include <Adafruit_MLX90614.h>
 #include <max6675.h>
 #include <EasyNextionLibrary.h>
 #include <avr/wdt.h>
@@ -110,7 +110,7 @@ int stageNumber = 0;
 char send[6];
 
 MAX6675 thermocouple(thermoSCK, thermoCS, thermoSO);
-//Adafruit_MLX90614 mlx = Adafruit_MLX90614();
+Adafruit_MLX90614 mlx = Adafruit_MLX90614();
 
 int CurrentPage = 0;
 int currentPageAddress = 0;
@@ -322,8 +322,8 @@ void setup() {
   digitalWrite(plamenikSwitch, LOW);
   digitalWrite(mjesalicaSwitch, LOW);
 
-  //Wire.setClock(10000);
-  // mlx.begin();
+  Wire.setClock(10000);
+  mlx.begin();
   timeForOtherStuff = millis();
   timeIntervalNextion = millis();
   time = millis();
@@ -347,7 +347,7 @@ void setup() {
     doneBooting = true;
   }
 
-  wdt_enable(WDTO_120MS);
+  wdt_enable(WDTO_250MS);
 
 }
 
@@ -361,6 +361,7 @@ void loop() {
       stopDrying = false;
       startDrying = true;
       doneBooting = false;
+      CurrentPage = 1;
     }
   }else if(receivedChar == 'f'){      //receive command for stop
     if(startDrying == true){
@@ -405,15 +406,15 @@ void loop() {
     
     //procedure after boot is completed
   }else if(startDrying == true && stopDrying == false && doneBooting == true){
-    if(timeForOtherStuffInterval <= millis() - timeForOtherStuff){
+    if(timeForOtherStuffInterval * 3 <= millis() - timeForOtherStuff){
       // Serial.print("citam termogen");
       tempOfThermogen = thermocouple.readCelsius();
       // Serial.println(tempOfThermogen);
       // Serial.println("citam kostice");
-      //tempOfSeed = mlx.readObjectTempC();
+      tempOfSeed = mlx.readObjectTempC();
       // Serial.println(tempOfSeed);
       // Serial.println("citam vanjsku temp");
-      //tempOutside = mlx.readAmbientTempC();
+      // tempOutside = mlx.readAmbientTempC();
       // Serial.println(tempOutside);
       // Serial.println("Procitao");
       
@@ -576,8 +577,8 @@ void loop() {
       startRight = true;
       time = millis();
       timeChangeDirection = millis();
-      Serial.print("Desno");
-      Serial.print("\n");
+      // Serial.print("Desno");
+      // Serial.print("\n");
   }
 if(digitalRead(goreSide) == LOW && goreSideWatch == true && moveButtonsPressed == false){
     digitalWrite(goToRight, LOW);
@@ -587,8 +588,8 @@ if(digitalRead(goreSide) == LOW && goreSideWatch == true && moveButtonsPressed =
     startLeft = true;
     time = millis();
     timeChangeDirection = millis();
-    Serial.print("Lijevo");
-    Serial.print("\n");
+    // Serial.print("Lijevo");
+    // Serial.print("\n");
 }
 myNex.NextionListen();
 
