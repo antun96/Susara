@@ -412,6 +412,9 @@ void loop() {
       // Serial.println(tempOfThermogen);
       // Serial.println("citam kostice");
       tempOfSeed = mlx.readObjectTempC();
+      if(tempOfSeed == 99){
+        tempOfSeed = 0;
+      }
       // Serial.println(tempOfSeed);
       // Serial.println("citam vanjsku temp");
       // tempOutside = mlx.readAmbientTempC();
@@ -420,9 +423,9 @@ void loop() {
       
       if(tempOfSeed > maxSeedTemp && kosticePostigleTemp == false){
       kosticePostigleTemp = true;
-      timeOfBurnerShutdown[numberOfShutdowns] = millis();
-      numberOfShutdowns++;
-      }else if(tempOfSeed <35){
+      //timeOfBurnerShutdown[numberOfShutdowns] = millis();
+      //numberOfShutdowns++;
+      }else if(tempOfSeed < 35){
         kosticePostigleTemp = false;
       }
 
