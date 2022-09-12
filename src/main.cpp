@@ -36,6 +36,7 @@ int STX = 13;
 
 float maxSeedTemp;
 float maxTermTemp;
+float minTermTemp;
 MAX6675 thermocouple(thermoSCK, thermoCS, thermoSO);
 
 int CurrentPage = 0;
@@ -43,6 +44,7 @@ int currentPageAddress = 0;
 int setMaxTermTempAddress = 1;
 int setMaxSeedTempAddress = 2;
 int mixerDelayTimeAddress = 3;
+int setMinTermTempAddress = 4;
 
 unsigned long time;
 unsigned long timeForOtherStuff;
@@ -240,6 +242,7 @@ void trigger2()
   CurrentPage = 2;
   myNex.writeNum("n0.val", (int)maxSeedTemp);
   myNex.writeNum("n1.val", (int)maxTermTemp);
+  myNex.writeNum("n2.val", (int)minTermTemp);
   mixerDelayTimeUpdate();
 }
 void trigger7()
@@ -247,6 +250,7 @@ void trigger7()
   CurrentPage = 3;
   myNex.writeNum("n0.val", (int)maxSeedTemp);
   myNex.writeNum("n1.val", (int)maxTermTemp);
+  myNex.writeNum("n2.val", (int)minTermTemp);
   mixerDelayTimeUpdate();
 }
 void trigger3()
@@ -326,6 +330,7 @@ void trigger10()
   {
     myNex.writeNum("n0.val", (int)maxSeedTemp);
     myNex.writeNum("n1.val", (int)maxTermTemp);
+    myNex.writeNum("n2.val", (int)minTermTemp);
     mixerDelayTimeUpdate();
   }
 }
@@ -337,6 +342,7 @@ void trigger12()
   {
     myNex.writeNum("n0.val", (int)maxSeedTemp);
     myNex.writeNum("n1.val", (int)maxTermTemp);
+    myNex.writeNum("n2.val", (int)minTermTemp);
     mixerDelayTimeUpdate();
   }
 }
@@ -348,6 +354,7 @@ void trigger11()
   {
     myNex.writeNum("n0.val", (int)maxSeedTemp);
     myNex.writeNum("n1.val", (int)maxTermTemp);
+    myNex.writeNum("n2.val", (int)minTermTemp);
     mixerDelayTimeUpdate();
   }
 }
@@ -359,6 +366,7 @@ void trigger13()
   {
     myNex.writeNum("n0.val", (int)maxSeedTemp);
     myNex.writeNum("n1.val", (int)maxTermTemp);
+    myNex.writeNum("n2.val", (int)minTermTemp);
     mixerDelayTimeUpdate();
   }
 }
@@ -413,8 +421,6 @@ void trigger15()
   }
 }
 
-
-
 void trigger16()
 {
   if (mixerDelayTime != 0)
@@ -429,6 +435,20 @@ void trigger17()
   mixerDelayTime += 0.5;
   EEPROM.update(mixerDelayTimeAddress, (int)mixerDelayTime * 10 / 5);
   mixerDelayTimeUpdate();
+}
+
+void trigger18()
+{
+  minTermTemp -= 1;
+  EEPROM.update(setMinTermTempAddress, minTermTemp);
+  myNex.writeNum("n2.val", (int)minTermTemp);
+}
+
+void trigger19()
+{
+  minTermTemp += 1;
+  EEPROM.update(setMinTermTempAddress, minTermTemp);
+  myNex.writeNum("n2.val", (int)minTermTemp);
 }
 
 void goLeft()
@@ -492,6 +512,7 @@ void setup()
   maxSeedTemp = EEPROM.read(setMaxSeedTempAddress);
   maxTermTemp = EEPROM.read(setMaxTermTempAddress);
   mixerDelayTime = EEPROM.read(mixerDelayTimeAddress) * 0.5;
+  minTermTemp = EEPROM.read(setMinTermTempAddress);
 
   // if(CurrentPage == 1){
   //   digitalWrite(ventSwitch, HIGH);
@@ -626,7 +647,7 @@ void loop()
         //Serial.println("grije");
         // } else if(kosticePostigleTemp == false && (tempOfSeed < 30 || tempOfThermogen < maxTermTemp - 15)){
       }
-      else if (kosticePostigleTemp == false && termogenOverheated == true && tempOfThermogen < maxTermTemp - 15)
+      else if (kosticePostigleTemp == false && termogenOverheated == true && tempOfThermogen < minTermTemp)
       {
 
         TurnOnPlamenik();
@@ -649,22 +670,34 @@ void loop()
 
     if (mixerDelayTime == 0 && timeInterval < millis() - time)
     {
-      if (startMixer == true && startLeft == true)
+      if(startMixer == false)
+      {
+        digitalWrite(mjesalicaSwitch, HIGH);
+        startMixer = true;
+        timeMixer = millis();
+      }
+      if (startMixer == true && startLeft == true && 5000 < millis() - timeMixer)
       {
         goLeft();
       }
-      else if (startMixer == true && startRight == true)
+      else if (startMixer == true && startRight == true && 5000 < millis() - timeMixer)
       {
         goRight();
       }
     }
     else if (mixerDelayTime > 0 && mixerDelayTime * 60 * 1000 < millis() - time)
     {
-      if (startMixer == true && startLeft == true)
+      if(startMixer == false)
+      {
+        digitalWrite(mjesalicaSwitch, HIGH);
+        startMixer = true;
+        timeMixer = millis();
+      }
+      if (startMixer == true && startLeft == true && 5000 < millis() - timeMixer)
       {
         goLeft();
       }
-      else if (startMixer == true && startRight == true)
+      else if (startMixer == true && startRight == true && 5000 < millis() - timeMixer)
       {
         goRight();
       }
@@ -834,6 +867,8 @@ void loop()
     timeIntervalNextion = millis();
   }
 
+  //stopping sqitch is hit!!
+
   if (digitalRead(termogenSide) == LOW && termogenSideWatch == true && moveButtonsPressed == false)
   {
     digitalWrite(goToLeft, LOW);
@@ -841,6 +876,12 @@ void loop()
     moveToLeft = false;
     startLeft = false;
     startRight = true;
+    if(mixerDelayTime > 0)
+    {
+      digitalWrite(mjesalicaSwitch, LOW);
+      startMixer = false;
+
+    }
     time = millis();
     timeChangeDirection = millis();
     // Serial.print("Desno");
@@ -853,6 +894,12 @@ void loop()
     moveToRight = false;
     startRight = false;
     startLeft = true;
+    if(mixerDelayTime > 0)
+    {
+      digitalWrite(mjesalicaSwitch, LOW);
+      startMixer = false;
+
+    }
     time = millis();
     timeChangeDirection = millis();
     // Serial.print("Lijevo");
