@@ -220,13 +220,36 @@ void SendSSMessage(String messageBody)
   digitalWrite(SSerialTxControl, RS485Receive);
 }
 
+void updatePage1Values()
+{
+  myNex.writeNum("n0.val", (int)tempOfThermogen);
+  myNex.writeNum("n1.val", (int)tempOfSeed);
+  myNex.writeNum("n2.val", (int)calculateTime);
+  if (heatMode == COOL)
+  {
+    myNex.writeStr("b2.txt", "C");
+  }
+  else if (heatMode = AUTO)
+  {
+    myNex.writeStr("b2.txt", "A");
+  }
+  if (burnerState == false)
+  {
+    myNex.writeNum("b2.bco", 2300);
+  }
+  else if (burnerState == true)
+  {
+    myNex.writeNum("b2.bco", 61440);
+  }
+}
+
 void trigger1()
 { //start drying
   stopDrying = false;
   startDrying = true;
   doneBooting = false;
   CurrentPage = 1;
-  EEPROM.update(currentPageAddress, CurrentPage);
+  updatePage1Values();
 }
 
 void trigger8()
@@ -235,7 +258,6 @@ void trigger8()
   doneBooting = false;
   stopDrying = true;
   CurrentPage = 0;
-  EEPROM.update(currentPageAddress, CurrentPage);
 }
 void trigger2()
 { //postavke from home
@@ -296,32 +318,13 @@ void trigger14()
   CurrentPage = 1;
   timeIntervalNextion = millis();
   calculateTime = (millis() - timeDrying) / 1000 / 60;
-  myNex.writeNum("n0.val", (int)tempOfThermogen);
-  myNex.writeNum("n1.val", (int)tempOfSeed);
-  myNex.writeNum("n2.val", (int)calculateTime);
-  if(heatMode == COOL)
-  {
-    myNex.writeStr("b2.txt", "C");
-  }
-  else if (heatMode = AUTO)
-  {
-    myNex.writeStr("b2.txt", "A");
-  }
-  if(burnerState == false)
-  {
-    myNex.writeNum("b2.bco", 2300);
-  }
-  else if(burnerState == true)
-  {
-    myNex.writeNum("b2.bco", 61440);
-  }
-  //EEPROM.update(currentPageAddress, CurrentPage);
+  updatePage1Values();
 }
 void trigger9(void *ptr)
 { //back from settings to home
   CurrentPage = 0;
-  //EEPROM.update(currentPageAddress, CurrentPage);
 }
+
 void trigger10()
 { //DecrementTempOfSeed
   maxSeedTemp = maxSeedTemp - 1;
@@ -391,10 +394,9 @@ void TurnOnPlamenik()
     burnerState = true;
     if (CurrentPage == 1)
     {
-      if(heatMode == AUTO)
+      if (heatMode == AUTO)
       {
         myNex.writeStr("b2.txt", "A");
-
       }
       myNex.writeNum("b2.bco", 61440);
     }
@@ -453,7 +455,7 @@ void trigger19()
 
 void goLeft()
 {
-  if (digitalRead(termogenSide != LOW))
+  if (digitalRead(termogenSide) != LOW)
   {
     startLeft = false;
     digitalWrite(goToRight, LOW);
@@ -670,7 +672,7 @@ void loop()
 
     if (mixerDelayTime == 0 && timeInterval < millis() - time)
     {
-      if(startMixer == false)
+      if (startMixer == false)
       {
         digitalWrite(mjesalicaSwitch, HIGH);
         startMixer = true;
@@ -687,7 +689,7 @@ void loop()
     }
     else if (mixerDelayTime > 0 && mixerDelayTime * 60 * 1000 < millis() - time)
     {
-      if(startMixer == false)
+      if (startMixer == false)
       {
         digitalWrite(mjesalicaSwitch, HIGH);
         startMixer = true;
@@ -876,11 +878,10 @@ void loop()
     moveToLeft = false;
     startLeft = false;
     startRight = true;
-    if(mixerDelayTime > 0)
+    if (mixerDelayTime > 0)
     {
       digitalWrite(mjesalicaSwitch, LOW);
       startMixer = false;
-
     }
     time = millis();
     timeChangeDirection = millis();
@@ -894,11 +895,10 @@ void loop()
     moveToRight = false;
     startRight = false;
     startLeft = true;
-    if(mixerDelayTime > 0)
+    if (mixerDelayTime > 0)
     {
       digitalWrite(mjesalicaSwitch, LOW);
       startMixer = false;
-
     }
     time = millis();
     timeChangeDirection = millis();
