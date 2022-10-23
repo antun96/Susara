@@ -137,6 +137,8 @@ bool readSeedTemperature = false;
 bool sendLogMessage = false;
 
 int calculateTime = 0;
+int calculateHours = 0;
+int calculateMinutes = 0;
 
 bool lie = false;
 unsigned long lieTime;
@@ -846,9 +848,12 @@ void loop()
   if (CurrentPage == 1 && 2500 < millis() - timeIntervalNextion)
   {
     calculateTime = (millis() - timeDrying) / 1000 / 60;
+    calculateHours = calculateTime / 60;
+    calculateMinutes = calculateTime - calculateHours * 60;
     myNex.writeNum("n0.val", (int)tempOfThermogen);
     myNex.writeNum("n1.val", (int)tempOfSeed);
-    myNex.writeNum("n2.val", (int)calculateTime);
+    myNex.writeStr("t4.txt", String(calculateHours) + ":" + String(calculateMinutes));
+    // myNex.writeNum("t4.txt", (int)calculateTime);
     if (burnerState == true)
     {
       myNex.writeNum("b2.bco", 61440);
