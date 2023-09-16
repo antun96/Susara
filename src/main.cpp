@@ -1,4 +1,4 @@
-//#include <Arduino.h>
+// #include <Arduino.h>
 #include <Wire.h>
 #include <max6675.h>
 #include <EasyNextionLibrary.h>
@@ -11,28 +11,28 @@
 SoftwareSerial SSerial(12, 13); // RX, TX
 EasyNex myNex(Serial);
 
-//Pin init
+// Pin init
 
-//input pins as interrupts
+// input pins as interrupts
 int goreSide = 2;
 int termogenSide = 3;
 
-//RelaySwitches
+// RelaySwitches
 int ventSwitch = 4;
 int plamenikSwitch = 5;
 int mjesalicaSwitch = 6;
 int goToRight = 7;
 int goToLeft = 8;
 
-//PlamenikTermometer
+// PlamenikTermometer
 int thermoSCK = 9;
 int thermoSO = 10;
 int thermoCS = 11;
 
-//SoftwareSerial Communication
+// SoftwareSerial Communication
 int SRX = 12;
 int STX = 13;
-#define SSerialTxControl A0 //RS485 Direction control
+#define SSerialTxControl A0 // RS485 Direction control
 
 float maxSeedTemp;
 float maxTermTemp;
@@ -65,7 +65,7 @@ bool moveToLeft = false;
 unsigned long timeOfBurnerShutdown[20];
 int numberOfShutdowns = 0;
 
-//start procedures
+// start procedures
 unsigned long timeForStart;
 
 unsigned long timeBurner;
@@ -78,7 +78,7 @@ unsigned long timeToLog;
 
 int fanVentStart = 0;
 
-//heatModes
+// heatModes
 typedef enum
 {
   AUTO,
@@ -98,7 +98,7 @@ bool termogenSideWatch = false;
 float mixerDelayTime = 0;
 
 unsigned long timeForOtherStuffInterval = 5000;
-//time gap to wait for change direction
+// time gap to wait for change direction
 unsigned long timeInterval = 2000;
 unsigned long timeForSerialResetInterval = 100;
 
@@ -197,7 +197,6 @@ void recvWithStartEndMarkers()
 
 void convertStringToFloat()
 {
-
   if (newData == true)
   {
     tempOfSeed = 0;                   // new for this version
@@ -205,11 +204,13 @@ void convertStringToFloat()
     newData = false;
   }
 }
+
 void mixerDelayTimeUpdate()
 {
   String data = String(mixerDelayTime, 1);
   myNex.writeStr("t4.txt", data);
 }
+
 void SendSSMessage(String messageBody)
 {
   digitalWrite(SSerialTxControl, RS485Transmit);
@@ -246,7 +247,7 @@ void updatePage1Values()
 }
 
 void trigger1()
-{ //start drying
+{ // start drying
   stopDrying = false;
   startDrying = true;
   doneBooting = false;
@@ -255,30 +256,33 @@ void trigger1()
 }
 
 void trigger8()
-{ //stop drying
+{ // stop drying
+  CurrentPage = 0;
   startDrying = false;
   doneBooting = false;
   stopDrying = true;
-  CurrentPage = 0;
 }
+
 void trigger2()
-{ //postavke from home
+{ // postavke from home
   CurrentPage = 2;
   myNex.writeNum("n0.val", (int)maxSeedTemp);
   myNex.writeNum("n1.val", (int)maxTermTemp);
   myNex.writeNum("n2.val", (int)minTermTemp);
   mixerDelayTimeUpdate();
 }
+
 void trigger7()
-{ //postavke from drying
+{ // postavke from drying
   CurrentPage = 3;
   myNex.writeNum("n0.val", (int)maxSeedTemp);
   myNex.writeNum("n1.val", (int)maxTermTemp);
   myNex.writeNum("n2.val", (int)minTermTemp);
   mixerDelayTimeUpdate();
 }
+
 void trigger3()
-{ //move to left
+{ // move to left
   if (digitalRead(termogenSide) != LOW && moveButtonsPressed == false)
   {
     digitalWrite(mjesalicaSwitch, HIGH);
@@ -288,16 +292,18 @@ void trigger3()
     moveButtonsPressed = true;
   }
 }
+
 void trigger4()
-{ //stop moving left
+{ // stop moving left
   moveToLeft = false;
   termogenSideWatch = false;
   digitalWrite(goToLeft, LOW);
   digitalWrite(mjesalicaSwitch, LOW);
   moveButtonsPressed = false;
 }
+
 void trigger5()
-{ //move to right
+{ // move to right
   if (digitalRead(goreSide) != LOW && moveButtonsPressed == false)
   {
     digitalWrite(mjesalicaSwitch, HIGH);
@@ -307,28 +313,31 @@ void trigger5()
     moveButtonsPressed = true;
   }
 }
+
 void trigger6()
-{ //stop move to right
+{ // stop move to right
   moveToRight = false;
   goreSideWatch = false;
   digitalWrite(goToRight, LOW);
   digitalWrite(mjesalicaSwitch, LOW);
   moveButtonsPressed = false;
 }
+
 void trigger14()
-{ //back from settings to drying
+{ // back from settings to drying
   CurrentPage = 1;
   timeIntervalNextion = millis();
   calculateTime = (millis() - timeDrying) / 1000 / 60;
   updatePage1Values();
 }
+
 void trigger9(void *ptr)
-{ //back from settings to home
+{ // back from settings to home
   CurrentPage = 0;
 }
 
 void trigger10()
-{ //DecrementTempOfSeed
+{ // DecrementTempOfSeed
   maxSeedTemp = maxSeedTemp - 1;
   EEPROM.update(setMaxSeedTempAddress, (int)maxSeedTemp);
   if (CurrentPage == 3 || CurrentPage == 2)
@@ -339,8 +348,9 @@ void trigger10()
     mixerDelayTimeUpdate();
   }
 }
+
 void trigger12()
-{ //DecrementTempOfTerm
+{ // DecrementTempOfTerm
   maxTermTemp = maxTermTemp - 1;
   EEPROM.update(setMaxTermTempAddress, (int)maxTermTemp);
   if (CurrentPage == 3 || CurrentPage == 2)
@@ -351,8 +361,9 @@ void trigger12()
     mixerDelayTimeUpdate();
   }
 }
+
 void trigger11()
-{ //IncrementTempOfSeed
+{ // IncrementTempOfSeed
   maxSeedTemp = maxSeedTemp + 1;
   EEPROM.update(setMaxSeedTempAddress, (int)maxSeedTemp);
   if (CurrentPage == 3 || CurrentPage == 2)
@@ -363,8 +374,9 @@ void trigger11()
     mixerDelayTimeUpdate();
   }
 }
+
 void trigger13()
-{ //IncrementTempOfTerm
+{ // IncrementTempOfTerm
   maxTermTemp = maxTermTemp + 1;
   EEPROM.update(setMaxTermTempAddress, (int)maxTermTemp);
   if (CurrentPage == 3 || CurrentPage == 2)
@@ -484,7 +496,7 @@ void goRight()
 void setup()
 {
 
-  //Serial.begin(9600);  // Start serial comunication at baud=9600
+  // Serial.begin(9600);  // Start serial comunication at baud=9600
 
   myNex.begin(9600);
   SSerial.begin(4800);
@@ -511,8 +523,6 @@ void setup()
   time = millis();
   heatMode = AUTO;
 
-  //CurrentPage = myNex.readNumber("dp");
-  //CurrentPage = EEPROM.read(currentPageAddress);
   maxSeedTemp = EEPROM.read(setMaxSeedTempAddress);
   maxTermTemp = EEPROM.read(setMaxTermTempAddress);
   mixerDelayTime = EEPROM.read(mixerDelayTimeAddress) * 0.5;
@@ -541,8 +551,8 @@ void setup()
 void loop()
 {
 
-  //receivedChar = Serial.read();
-  //receive command for start
+  // receivedChar = Serial.read();
+  // receive command for start
   if (receivedChar == 's')
   {
     if (startDrying == false)
@@ -554,7 +564,7 @@ void loop()
     }
   }
   else if (receivedChar == 'f')
-  { //receive command for stop
+  { // receive command for stop
     if (startDrying == true)
     {
       startDrying = false;
@@ -562,21 +572,21 @@ void loop()
       stopDrying = true;
     }
   }
-  //after start command is received, booting process begins
+  // after start command is received, booting process begins
   if (startDrying == true && stopDrying == false && doneBooting == false)
   {
     if (fanVentStart == 0)
     {
-      //SendSSMessage("Start");
+      // SendSSMessage("Start");
       digitalWrite(ventSwitch, HIGH);
       timeForStart = millis();
       startVentTermogen = true;
       fanVentStart = 1;
-      //Serial.println("pali termogen");
+      // Serial.println("pali termogen");
     }
     if (5000 <= millis() - timeForStart && startVentTermogen == true)
     {
-      TurnOnPlamenik(); //starts burner, after some time termogen fan starts
+      TurnOnPlamenik(); // starts burner, after some time termogen fan starts
       if (firstTimeBurner == false)
       {
         timeBurner = millis();
@@ -584,7 +594,7 @@ void loop()
       }
       if (5000 <= millis() - timeBurner)
       {
-        digitalWrite(mjesalicaSwitch, HIGH); //starts mixer
+        digitalWrite(mjesalicaSwitch, HIGH); // starts mixer
         startMixer = true;
         if (firstTimeMixer == false)
         {
@@ -592,7 +602,7 @@ void loop()
           firstTimeMixer = true;
         }
         if (5000 <= millis() - timeMixer)
-        { //start moving mixer
+        { // start moving mixer
           if (digitalRead(termogenSide) != LOW)
           {
             goLeft();
@@ -611,7 +621,7 @@ void loop()
       }
     }
 
-    //procedure after boot is completed
+    // procedure after boot is completed
   }
   else if (startDrying == true && stopDrying == false && doneBooting == true)
   {
@@ -629,8 +639,8 @@ void loop()
       if (tempOfSeed > maxSeedTemp && kosticePostigleTemp == false)
       {
         kosticePostigleTemp = true;
-        //timeOfBurnerShutdown[numberOfShutdowns] = millis();
-        //numberOfShutdowns++;
+        // timeOfBurnerShutdown[numberOfShutdowns] = millis();
+        // numberOfShutdowns++;
       }
       else if (tempOfSeed < 35)
       {
@@ -641,32 +651,32 @@ void loop()
       {
         TurnDownPlamenik();
         termogenOverheated = true;
-        //Serial.println("hladi");
+        // Serial.println("hladi");
       }
-      else if (kosticePostigleTemp == true && tempOfSeed <= 30)
+      else if (kosticePostigleTemp == true && tempOfSeed <= 30 && tempOfThermogen < maxTermTemp)
       {
         TurnOnPlamenik();
         kosticePostigleTemp = false;
 
-        //Serial.println("grije");
-        // } else if(kosticePostigleTemp == false && (tempOfSeed < 30 || tempOfThermogen < maxTermTemp - 15)){
+        // Serial.println("grije");
+        //  } else if(kosticePostigleTemp == false && (tempOfSeed < 30 || tempOfThermogen < maxTermTemp - 15)){
       }
       else if (kosticePostigleTemp == false && termogenOverheated == true && tempOfThermogen < minTermTemp)
       {
 
         TurnOnPlamenik();
         termogenOverheated = false;
-        //Serial.println("grije");
+        // Serial.println("grije");
       }
-      //logic to find out when to shutdown dryer
-      // if(numberOfShutdowns >= 5){
-      //   if(timeOfBurnerShutdown[numberOfShutdowns - 1] - timeOfBurnerShutdown[numberOfShutdowns - 5] < 3600000){
-      //     startDrying = false;
-      //     stopDrying = true;
-      //     doneBooting = false;
-      //     digitalWrite(plamenikSwitch, LOW);
-      //     timeOfShutdownStart = millis();
-      //   }
+      // logic to find out when to shutdown dryer
+      //  if(numberOfShutdowns >= 5){
+      //    if(timeOfBurnerShutdown[numberOfShutdowns - 1] - timeOfBurnerShutdown[numberOfShutdowns - 5] < 3600000){
+      //      startDrying = false;
+      //      stopDrying = true;
+      //      doneBooting = false;
+      //      digitalWrite(plamenikSwitch, LOW);
+      //      timeOfShutdownStart = millis();
+      //    }
 
       // }
       timeForOtherStuff = millis();
@@ -707,11 +717,11 @@ void loop()
       }
     }
   }
-  //shutdown procedure
+  // shutdown procedure
   else if (startDrying == false && stopDrying == true && doneBooting == false)
   {
-    //digitalWrite(plamenikSwitch, LOW);
-
+    // digitalWrite(plamenikSwitch, LOW);
+    CurrentPage = 0;
     startMixer = false;
     digitalWrite(mjesalicaSwitch, LOW);
     digitalWrite(goToLeft, LOW);
@@ -730,121 +740,33 @@ void loop()
     stopMoving = false;
     shutDownTemperatureReached = false;
 
-    // if (5000 < millis() - timeForOtherStuff)
-    // {
-    //   SendSSMessage("seed");
-    //   recvWithStartEndMarkers();
-    //   convertStringToFloat();
-
-    //   timeForOtherStuff = millis();
-    // }
-
-    // if (tempOfSeed < 25)
-    // {
-    //   //if((1200000 < millis() - timeOfShutdownStart && tempOfSeed <= (tempOutside + 4)) || shutDownTemperatureReached == true){
-    //   shutDownTemperatureReached = true;
-
-    //   //odi skroz u lijevo
-    //   if (startMixer == true && startLeft == true && timeInterval < millis() - time)
-    //   {
-    //     goLeft();
-    //   }
-    //   else if (startRight == true && startMixer == true && timeInterval < millis() - time)
-    //   {
-    //     startMixer = false;
-    //     digitalWrite(mjesalicaSwitch, LOW);
-    //     digitalWrite(goToLeft, LOW);
-    //     digitalWrite(goToRight, LOW);
-    //     digitalWrite(ventSwitch, LOW);
-    //     startVentTermogen = false;
-    //     fanVentStart = 0;
-    //     firstTimeBurner = false;
-    //     startMixer = false;
-    //     firstTimeMixer = false;
-    //     startLeft = false;
-    //     startRight = false;
-    //     doneBooting = true;
-    //     stopDrying = false;
-    //     startDrying = false;
-    //     stopMoving = false;
-    //     shutDownTemperatureReached = false;
-    //   }
-    //   // if(startLeft == true  &&  stopMoving == false){
-    //   //   digitalWrite(goToRight, LOW);
-    //   //   timeMixer = millis();
-    //   //   stopMoving = true;
-
-    //   // }else if(5000 <= millis() - timeMixer && stopMoving == true){
-    //   //     startMixer = false;
-    //   //     digitalWrite(mjesalicaSwitch, LOW);
-    //   //     digitalWrite(ventSwitch, LOW);
-    //   //     digitalWrite(ventSwitch, LOW);
-    //   //     startVentTermogen = false;
-    //   //     fanVentStart = 0;
-    //   //     firstTimeBurner = false;
-    //   //     startMixer = false;
-    //   //     firstTimeMixer = false;
-    //   //     startLeft = false;
-    //   //     startRight = false;
-    //   //     doneBooting = true;
-    //   //     stopDrying = false;
-    //   //     startDrying = false;
-    //   //     stopMoving = false;
-    //   //   }
-    // }
-    // else
-    // {
-    //   if (mixerDelayTime == 0 && timeInterval < millis() - time)
-    //   {
-    //     if (startMixer == true && startLeft == true)
-    //     {
-    //       goLeft();
-    //     }
-    //     else if (startMixer == true && startRight == true)
-    //     {
-    //       goRight();
-    //     }
-    //   }
-    //   else if (mixerDelayTime != 0 && mixerDelayTime * 60 * 1000 < millis() - time)
-    //   {
-    //     if (startMixer == true && startLeft == true)
-    //     {
-    //       goLeft();
-    //     }
-    //     else if (startMixer == true && startRight == true)
-    //     {
-    //       goRight();
-    //     }
-    //   }
-    // }
-  }
-  //end of shutdown procedure
+  // end of shutdown procedure
 
   if (moveButtonsPressed == true)
   {
-    //turn on posmak when button is pressed
+    // turn on posmak when button is pressed
     if (moveToLeft == true && 500 <= (millis() - timeForStartMovingMixer) && digitalRead(termogenSide) != LOW)
     {
       digitalWrite(goToLeft, HIGH);
     }
-    //shutdown posmak when button is not pressed
+    // shutdown posmak when button is not pressed
     if (digitalRead(termogenSide) == LOW && moveToLeft == true)
     {
       digitalWrite(goToLeft, LOW);
     }
-    //turn on posmak when button is pressed
+    // turn on posmak when button is pressed
     if (moveToRight == true && 500 <= (millis() - timeForStartMovingMixer) && digitalRead(goreSide) != LOW)
     {
       digitalWrite(goToRight, HIGH);
     }
-    //shutdown posmak when button is not pressed
+    // shutdown posmak when button is not pressed
     if (digitalRead(goreSide) == LOW && moveToRight == true)
     {
       digitalWrite(goToRight, LOW);
     }
   }
 
-  //update sreen parameters
+  // update sreen parameters
   if (CurrentPage == 1 && 2500 < millis() - timeIntervalNextion)
   {
     calculateTime = (millis() - timeDrying) / 1000 / 60;
@@ -874,7 +796,7 @@ void loop()
     timeIntervalNextion = millis();
   }
 
-  //stopping sqitch is hit!!
+  // stopping sqitch is hit!!
 
   if (digitalRead(termogenSide) == LOW && termogenSideWatch == true && moveButtonsPressed == false)
   {
@@ -911,27 +833,27 @@ void loop()
     // Serial.print("\n");
   }
 
-  //log process of drying
-  // if(60000 >= millis() - timeToLog && startDrying == true){
-  //   String message;
-  //   message.concat(calculateTime);
-  //   message.concat(",");
-  //   message.concat(timeBurnerOn/60000);
-  //   message.concat(",");
-  //   message.concat(tempOfThermogen);
-  //   message.concat(",");
-  //   message.concat(burnerState);
-  //   message.concat(",");
-  //   message.concat(tempOfSeed);
-  //   message.concat(",");
-  //   message.concat(kosticePostigleTemp);
-  //   //SendSSMessage(message);
-  //   timeToLog = millis();
-  // }
+  // log process of drying
+  //  if(60000 >= millis() - timeToLog && startDrying == true){
+  //    String message;
+  //    message.concat(calculateTime);
+  //    message.concat(",");
+  //    message.concat(timeBurnerOn/60000);
+  //    message.concat(",");
+  //    message.concat(tempOfThermogen);
+  //    message.concat(",");
+  //    message.concat(burnerState);
+  //    message.concat(",");
+  //    message.concat(tempOfSeed);
+  //    message.concat(",");
+  //    message.concat(kosticePostigleTemp);
+  //    //SendSSMessage(message);
+  //    timeToLog = millis();
+  //  }
 
   myNex.NextionListen();
   wdt_reset();
-  //nexLoop(nex_listen_list);
+  // nexLoop(nex_listen_list);
 
   // reset serial to enable communication
   // if(!Serial){
