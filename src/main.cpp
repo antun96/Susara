@@ -89,7 +89,7 @@ HeatMode heatMode;
 // heatModes
 typedef enum
 {
-  AUTO,
+  AUTOMATIC,
   STOP
 } MixMode;
 MixMode mixMode;
@@ -251,6 +251,14 @@ void updatePage1Values()
   else if (burnerState == true)
   {
     myNex.writeNum("b2.bco", 61440);
+  }
+  if (mixMode == AUTOMATIC)
+  {
+    myNex.writeStr("b3.txt", "S");
+  }
+  else if (mixMode == STOP)
+  {
+    myNex.writeStr("b3.txt", "A");
   }
 }
 
@@ -478,7 +486,7 @@ void trigger19()
 void trigger20()
 {
   // stop mixer
-  if (mixMode == AUTO)
+  if (mixMode == AUTOMATIC)
   {
     myNex.writeStr("b3.txt", "S");
     mixMode = STOP;
@@ -490,7 +498,7 @@ void trigger20()
   else if (mixMode == STOP)
   {
     myNex.writeStr("b3.txt", "A");
-    mixMode = AUTO;
+    mixMode = AUTOMATIC;
   }
 }
 
@@ -549,7 +557,7 @@ void setup()
   timeIntervalNextion = millis();
   time = millis();
   heatMode = AUTO;
-  mixMode = AUTO;
+  mixMode = AUTOMATIC;
 
   maxSeedTemp = EEPROM.read(setMaxSeedTempAddress);
   maxTermTemp = EEPROM.read(setMaxTermTempAddress);
@@ -820,6 +828,14 @@ void loop()
       {
         myNex.writeStr("b2.txt", "C");
       }
+      if (mixMode == AUTOMATIC)
+      {
+        myNex.writeStr("b3.txt", "S");
+      }
+      else if (mixMode == STOP)
+      {
+        myNex.writeStr("b3.txt", "A");
+      }
 
       timeIntervalNextion = millis();
     }
@@ -860,36 +876,7 @@ void loop()
       // Serial.print("Lijevo");
       // Serial.print("\n");
     }
-
-    // log process of drying
-    //  if(60000 >= millis() - timeToLog && startDrying == true){
-    //    String message;
-    //    message.concat(calculateTime);
-    //    message.concat(",");
-    //    message.concat(timeBurnerOn/60000);
-    //    message.concat(",");
-    //    message.concat(tempOfThermogen);
-    //    message.concat(",");
-    //    message.concat(burnerState);
-    //    message.concat(",");
-    //    message.concat(tempOfSeed);
-    //    message.concat(",");
-    //    message.concat(kosticePostigleTemp);
-    //    //SendSSMessage(message);
-    //    timeToLog = millis();
-    //  }
-
-    myNex.NextionListen();
-    wdt_reset();
-    // nexLoop(nex_listen_list);
-
-    // reset serial to enable communication
-    // if(!Serial){
-    //     Serial.end();
-    //     resetSerial = true;
-    //     timeForSerialReset = millis();
-    //   }
-    // if(resetSerial == true && timeForSerialResetInterval <= millis() - timeForSerialReset){
-    //   Serial.begin(9600);
-    // }
   }
+  myNex.NextionListen();
+  wdt_reset();
+}
