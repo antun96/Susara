@@ -722,7 +722,7 @@ void loop()
       timeForOtherStuff = millis();
     }
 
-    if (mixerDelayTime == 0 && timeInterval < millis() - time && mixMode == AUTO)
+    if (mixerDelayTime == 0 && timeInterval < millis() - time && mixMode == MixMode::MIX)
     {
       if (startMixer == false)
       {
@@ -739,7 +739,7 @@ void loop()
         goRight();
       }
     }
-    else if (mixerDelayTime > 0 && mixerDelayTime * 60 * 1000 < millis() - time && mixMode == AUTO)
+    else if (mixerDelayTime > 0 && mixerDelayTime * 60 * 1000 < millis() - time && mixMode == MixMode::MIX)
     {
       if (startMixer == false)
       {
