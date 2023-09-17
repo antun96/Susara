@@ -218,7 +218,7 @@ void convertStringToFloat()
 void mixerDelayTimeUpdate()
 {
   String data = String(mixerDelayTime, 1);
-  myNex.writeStr("t4.txt", data);
+  myNex.writeStr("t5.txt", data);
 }
 
 void SendSSMessage(String messageBody)
@@ -235,32 +235,37 @@ void SendSSMessage(String messageBody)
 
 void updatePage1Values()
 {
+  calculateTime = (millis() - timeDrying) / 1000 / 60;
+  calculateHours = calculateTime / 60;
+  calculateMinutes = calculateTime - calculateHours * 60;
   myNex.writeNum("n0.val", (int)tempOfThermogen);
   myNex.writeNum("n1.val", (int)tempOfSeed);
-  myNex.writeNum("n2.val", (int)calculateTime);
-  if (heatMode == HeatMode::COOL)
-  {
-    myNex.writeStr("b2.txt", "C");
-  }
-  else if (heatMode = HeatMode::AUTO)
-  {
-    myNex.writeStr("b2.txt", "A");
-  }
-  if (burnerState == false)
-  {
-    myNex.writeNum("b2.bco", 2300);
-  }
-  else if (burnerState == true)
+  myNex.writeStr("t6.txt", String(calculateHours) + ":" + String(calculateMinutes));
+  if (burnerState == true)
   {
     myNex.writeNum("b2.bco", 61440);
   }
+  else if (burnerState == false)
+  {
+    myNex.writeNum("b2.bco", 2300);
+  }
+  if (heatMode == AUTO)
+  {
+    myNex.writeStr("b2.txt", "A");
+  }
+  else if (heatMode == COOL)
+  {
+    myNex.writeStr("b2.txt", "C");
+  }
   if (mixMode == MixMode::MIX)
   {
-    myNex.writeStr("b3.txt", "S");
+    myNex.writeStr("b3.txt", "A");
+    myNex.writeNum("b3.bco", 1024);
   }
   else if (mixMode == MixMode::STOP)
   {
-    myNex.writeStr("b3.txt", "A");
+    myNex.writeStr("b3.txt", "S");
+    myNex.writeNum("b3.bco", 61440);
   }
 }
 
@@ -269,6 +274,7 @@ void trigger1()
   stopDrying = false;
   startDrying = true;
   doneBooting = false;
+  timeIntervalNextion = millis();
   CurrentPage = 1;
   updatePage1Values();
 }
@@ -593,25 +599,25 @@ void loop()
 
   // receivedChar = Serial.read();
   // receive command for start
-  if (receivedChar == 's')
-  {
-    if (startDrying == false)
-    {
-      stopDrying = false;
-      startDrying = true;
-      doneBooting = false;
-      CurrentPage = 1;
-    }
-  }
-  else if (receivedChar == 'f')
-  { // receive command for stop
-    if (startDrying == true)
-    {
-      startDrying = false;
-      doneBooting = false;
-      stopDrying = true;
-    }
-  }
+  // if (receivedChar == 's')
+  // {
+  //   if (startDrying == false)
+  //   {
+  //     stopDrying = false;
+  //     startDrying = true;
+  //     doneBooting = false;
+  //     CurrentPage = 1;
+  //   }
+  // }
+  // else if (receivedChar == 'f')
+  // { // receive command for stop
+  //   if (startDrying == true)
+  //   {
+  //     startDrying = false;
+  //     doneBooting = false;
+  //     stopDrying = true;
+  //   }
+  // }
   // after start command is received, booting process begins
   if (startDrying == true && stopDrying == false && doneBooting == false)
   {
@@ -781,108 +787,107 @@ void loop()
     shutDownTemperatureReached = false;
 
     // end of shutdown procedure
+  }
 
-    if (moveButtonsPressed == true)
+  // update sreen parameters
+  if (CurrentPage == 1 && 2500 < millis() - timeIntervalNextion)
+  {
+    calculateTime = (millis() - timeDrying) / 1000 / 60;
+    calculateHours = calculateTime / 60;
+    calculateMinutes = calculateTime - calculateHours * 60;
+    myNex.writeNum("n0.val", (int)tempOfThermogen);
+    myNex.writeNum("n1.val", (int)tempOfSeed);
+    myNex.writeStr("t6.txt", String(calculateHours) + ":" + String(calculateMinutes));
+    if (burnerState == true)
     {
-      // turn on posmak when button is pressed
-      if (moveToLeft == true && 500 <= (millis() - timeForStartMovingMixer) && digitalRead(termogenSide) != LOW)
-      {
-        digitalWrite(goToLeft, HIGH);
-      }
-      // shutdown posmak when button is not pressed
-      if (digitalRead(termogenSide) == LOW && moveToLeft == true)
-      {
-        digitalWrite(goToLeft, LOW);
-      }
-      // turn on posmak when button is pressed
-      if (moveToRight == true && 500 <= (millis() - timeForStartMovingMixer) && digitalRead(goreSide) != LOW)
-      {
-        digitalWrite(goToRight, HIGH);
-      }
-      // shutdown posmak when button is not pressed
-      if (digitalRead(goreSide) == LOW && moveToRight == true)
-      {
-        digitalWrite(goToRight, LOW);
-      }
+      myNex.writeNum("b2.bco", 61440);
+    }
+    else if (burnerState == false)
+    {
+      myNex.writeNum("b2.bco", 2300);
+    }
+    if (heatMode == AUTO)
+    {
+      myNex.writeStr("b2.txt", "A");
+    }
+    else if (heatMode == COOL)
+    {
+      myNex.writeStr("b2.txt", "C");
+    }
+    if (mixMode == MixMode::MIX)
+    {
+      myNex.writeStr("b3.txt", "A");
+      myNex.writeNum("b3.bco", 1024);
+    }
+    else if (mixMode == MixMode::STOP)
+    {
+      myNex.writeStr("b3.txt", "S");
+      myNex.writeNum("b3.bco", 61440);
     }
 
-    // update sreen parameters
-    if (CurrentPage == 1 && 2500 < millis() - timeIntervalNextion)
+    timeIntervalNextion = millis();
+  }
+
+  if (moveButtonsPressed == true)
+  {
+    // turn on posmak when button is pressed
+    if (moveToLeft == true && 500 <= (millis() - timeForStartMovingMixer) && digitalRead(termogenSide) != LOW)
     {
-      calculateTime = (millis() - timeDrying) / 1000 / 60;
-      calculateHours = calculateTime / 60;
-      calculateMinutes = calculateTime - calculateHours * 60;
-      myNex.writeNum("n0.val", (int)tempOfThermogen);
-      myNex.writeNum("n1.val", (int)tempOfSeed);
-      myNex.writeStr("t4.txt", String(calculateHours) + ":" + String(calculateMinutes));
-      // myNex.writeNum("t4.txt", (int)calculateTime);
-      if (burnerState == true)
-      {
-        myNex.writeNum("b2.bco", 61440);
-      }
-      else if (burnerState == false)
-      {
-        myNex.writeNum("b2.bco", 2300);
-      }
-      if (heatMode == AUTO)
-      {
-        myNex.writeStr("b2.txt", "A");
-      }
-      else if (heatMode == COOL)
-      {
-        myNex.writeStr("b2.txt", "C");
-      }
-      if (mixMode == MixMode::MIX)
-      {
-        myNex.writeStr("b3.txt", "A");
-        myNex.writeNum("b3.bco", 1024);
-      }
-      else if (mixMode == STOP)
-      {
-        myNex.writeStr("b3.txt", "SS");
-        myNex.writeNum("b3.bco", 61440);
-      }
-
-      timeIntervalNextion = millis();
+      digitalWrite(goToLeft, HIGH);
     }
-
-    // stopping sqitch is hit!!
-
-    if (digitalRead(termogenSide) == LOW && termogenSideWatch == true && moveButtonsPressed == false)
+    // shutdown posmak when button is not pressed
+    if (digitalRead(termogenSide) == LOW && moveToLeft == true)
     {
       digitalWrite(goToLeft, LOW);
-      termogenSideWatch = false;
-      moveToLeft = false;
-      startLeft = false;
-      startRight = true;
-      if (mixerDelayTime > 0)
-      {
-        digitalWrite(mjesalicaSwitch, LOW);
-        startMixer = false;
-      }
-      time = millis();
-      timeChangeDirection = millis();
-      // Serial.print("Desno");
-      // Serial.print("\n");
     }
-    if (digitalRead(goreSide) == LOW && goreSideWatch == true && moveButtonsPressed == false)
+    // turn on posmak when button is pressed
+    if (moveToRight == true && 500 <= (millis() - timeForStartMovingMixer) && digitalRead(goreSide) != LOW)
+    {
+      digitalWrite(goToRight, HIGH);
+    }
+    // shutdown posmak when button is not pressed
+    if (digitalRead(goreSide) == LOW && moveToRight == true)
     {
       digitalWrite(goToRight, LOW);
-      goreSideWatch = false;
-      moveToRight = false;
-      startRight = false;
-      startLeft = true;
-      if (mixerDelayTime > 0)
-      {
-        digitalWrite(mjesalicaSwitch, LOW);
-        startMixer = false;
-      }
-      time = millis();
-      timeChangeDirection = millis();
-      // Serial.print("Lijevo");
-      // Serial.print("\n");
     }
   }
+  // stopping sqitch is hit!!
+
+  if (digitalRead(termogenSide) == LOW && termogenSideWatch == true && moveButtonsPressed == false)
+  {
+    digitalWrite(goToLeft, LOW);
+    termogenSideWatch = false;
+    moveToLeft = false;
+    startLeft = false;
+    startRight = true;
+    if (mixerDelayTime > 0)
+    {
+      digitalWrite(mjesalicaSwitch, LOW);
+      startMixer = false;
+    }
+    time = millis();
+    timeChangeDirection = millis();
+    // Serial.print("Desno");
+    // Serial.print("\n");
+  }
+  if (digitalRead(goreSide) == LOW && goreSideWatch == true && moveButtonsPressed == false)
+  {
+    digitalWrite(goToRight, LOW);
+    goreSideWatch = false;
+    moveToRight = false;
+    startRight = false;
+    startLeft = true;
+    if (mixerDelayTime > 0)
+    {
+      digitalWrite(mjesalicaSwitch, LOW);
+      startMixer = false;
+    }
+    time = millis();
+    timeChangeDirection = millis();
+    // Serial.print("Lijevo");
+    // Serial.print("\n");
+  }
+
   myNex.NextionListen();
   wdt_reset();
 }
