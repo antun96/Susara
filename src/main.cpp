@@ -17,6 +17,8 @@ EasyNex myNex(Serial);
 int goreSide = 2;
 int termogenSide = 3;
 
+int minSeedTemp = 30;
+
 // RelaySwitches
 int ventSwitch = 4;
 int plamenikSwitch = 5;
@@ -86,10 +88,10 @@ typedef enum
 } HeatMode;
 HeatMode heatMode;
 
-// heatModes
+// mixModes
 typedef enum
 {
-  AUTOMATIC,
+  MIX,
   STOP
 } MixMode;
 MixMode mixMode;
@@ -236,11 +238,11 @@ void updatePage1Values()
   myNex.writeNum("n0.val", (int)tempOfThermogen);
   myNex.writeNum("n1.val", (int)tempOfSeed);
   myNex.writeNum("n2.val", (int)calculateTime);
-  if (heatMode == COOL)
+  if (heatMode == HeatMode::COOL)
   {
     myNex.writeStr("b2.txt", "C");
   }
-  else if (heatMode = AUTO)
+  else if (heatMode = HeatMode::AUTO)
   {
     myNex.writeStr("b2.txt", "A");
   }
@@ -252,11 +254,11 @@ void updatePage1Values()
   {
     myNex.writeNum("b2.bco", 61440);
   }
-  if (mixMode == AUTOMATIC)
+  if (mixMode == MixMode::MIX)
   {
     myNex.writeStr("b3.txt", "S");
   }
-  else if (mixMode == STOP)
+  else if (mixMode == MixMode::STOP)
   {
     myNex.writeStr("b3.txt", "A");
   }
@@ -424,7 +426,7 @@ void TurnOnPlamenik()
     burnerState = true;
     if (CurrentPage == 1)
     {
-      if (heatMode == AUTO)
+      if (heatMode == HeatMode::AUTO)
       {
         myNex.writeStr("b2.txt", "A");
       }
@@ -434,21 +436,21 @@ void TurnOnPlamenik()
 }
 void trigger15()
 {
-  if (heatMode == AUTO)
+  if (heatMode == HeatMode::AUTO)
   {
-    heatMode = COOL;
+    heatMode = HeatMode::COOL;
     myNex.writeStr("b2.txt", "C");
     doNotTurnOnPlamenikEverAgain = true;
-    TurnDownPlamenik();
+    // TurnDownPlamenik();
   }
-  else if (heatMode == COOL)
+  else if (heatMode == HeatMode::COOL)
   {
-    heatMode = AUTO;
+    heatMode = HeatMode::AUTO;
     doNotTurnOnPlamenikEverAgain = false;
-    if (startDrying == true && doneBooting == true && tempOfSeed < 60)
-    {
-      TurnOnPlamenik();
-    }
+    // if (startDrying == true && doneBooting == true && tempOfSeed < maxSeedTemp)
+    // {
+    //   TurnOnPlamenik();
+    // }
     myNex.writeStr("b2.txt", "A");
   }
 }
@@ -486,19 +488,21 @@ void trigger19()
 void trigger20()
 {
   // stop mixer
-  if (mixMode == AUTOMATIC)
+  if (mixMode == MixMode::MIX)
   {
     myNex.writeStr("b3.txt", "S");
-    mixMode = STOP;
+    myNex.writeNum("b3.bco", 61440);
+    mixMode = MixMode::STOP;
     startMixer = false;
     digitalWrite(mjesalicaSwitch, LOW);
     digitalWrite(goToLeft, LOW);
     digitalWrite(goToRight, LOW);
   }
-  else if (mixMode == STOP)
+  else if (mixMode == MixMode::STOP)
   {
     myNex.writeStr("b3.txt", "A");
-    mixMode = AUTOMATIC;
+    myNex.writeNum("b3.bco", 1024);
+    mixMode = MixMode::MIX;
   }
 }
 
@@ -556,8 +560,8 @@ void setup()
   timeForOtherStuff = millis();
   timeIntervalNextion = millis();
   time = millis();
-  heatMode = AUTO;
-  mixMode = AUTOMATIC;
+  heatMode = HeatMode::AUTO;
+  mixMode = MixMode::MIX;
 
   maxSeedTemp = EEPROM.read(setMaxSeedTempAddress);
   maxTermTemp = EEPROM.read(setMaxTermTempAddress);
@@ -689,7 +693,7 @@ void loop()
         termogenOverheated = true;
         // Serial.println("hladi");
       }
-      else if (kosticePostigleTemp == true && tempOfSeed <= 30 && tempOfThermogen < maxTermTemp)
+      else if (kosticePostigleTemp == true && tempOfSeed <= minSeedTemp && tempOfThermogen < maxTermTemp)
       {
         TurnOnPlamenik();
         kosticePostigleTemp = false;
@@ -828,13 +832,15 @@ void loop()
       {
         myNex.writeStr("b2.txt", "C");
       }
-      if (mixMode == AUTOMATIC)
+      if (mixMode == MixMode::MIX)
       {
-        myNex.writeStr("b3.txt", "S");
+        myNex.writeStr("b3.txt", "A");
+        myNex.writeNum("b3.bco", 1024);
       }
       else if (mixMode == STOP)
       {
-        myNex.writeStr("b3.txt", "A");
+        myNex.writeStr("b3.txt", "SS");
+        myNex.writeNum("b3.bco", 61440);
       }
 
       timeIntervalNextion = millis();
