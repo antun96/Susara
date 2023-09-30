@@ -447,16 +447,16 @@ void trigger15()
     heatMode = HeatMode::COOL;
     myNex.writeStr("b2.txt", "C");
     doNotTurnOnPlamenikEverAgain = true;
-    // TurnDownPlamenik();
+    TurnDownPlamenik();
   }
   else if (heatMode == HeatMode::COOL)
   {
     heatMode = HeatMode::AUTO;
     doNotTurnOnPlamenikEverAgain = false;
-    // if (startDrying == true && doneBooting == true && tempOfSeed < maxSeedTemp)
-    // {
-    //   TurnOnPlamenik();
-    // }
+    if (startDrying == true && doneBooting == true && tempOfSeed < maxSeedTemp)
+    {
+      TurnOnPlamenik();
+    }
     myNex.writeStr("b2.txt", "A");
   }
 }
@@ -728,7 +728,7 @@ void loop()
       timeForOtherStuff = millis();
     }
 
-    if (mixerDelayTime == 0 && timeInterval < millis() - time && mixMode == MixMode::MIX)
+    if (mixerDelayTime * 60 * 1000 < millis() - time && mixMode == MixMode::MIX)
     {
       if (startMixer == false)
       {
@@ -745,23 +745,23 @@ void loop()
         goRight();
       }
     }
-    else if (mixerDelayTime > 0 && mixerDelayTime * 60 * 1000 < millis() - time && mixMode == MixMode::MIX)
-    {
-      if (startMixer == false)
-      {
-        digitalWrite(mjesalicaSwitch, HIGH);
-        startMixer = true;
-        timeMixer = millis();
-      }
-      if (startMixer == true && startLeft == true && 5000 < millis() - timeMixer)
-      {
-        goLeft();
-      }
-      else if (startMixer == true && startRight == true && 5000 < millis() - timeMixer)
-      {
-        goRight();
-      }
-    }
+    // if (mixerDelayTime == 0 && timeInterval < millis() - time && mixMode == MixMode::MIX)
+    // {
+    //   if (startMixer == false)
+    //   {
+    //     digitalWrite(mjesalicaSwitch, HIGH);
+    //     startMixer = true;
+    //     timeMixer = millis();
+    //   }
+    //   if (startMixer == true && startLeft == true && 5000 < millis() - timeMixer)
+    //   {
+    //     goLeft();
+    //   }
+    //   else if (startMixer == true && startRight == true && 5000 < millis() - timeMixer)
+    //   {
+    //     goRight();
+    //   }
+    // }
   }
   // shutdown procedure
   else if (startDrying == false && stopDrying == true && doneBooting == false)
