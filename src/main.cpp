@@ -36,6 +36,8 @@ int SRX = 12;
 int STX = 13;
 #define SSerialTxControl A0 // RS485 Direction control
 
+int mixerImpulsePin = A5;
+
 float maxSeedTemp;
 float maxTermTemp;
 float minTermTemp;
@@ -51,6 +53,10 @@ int setMinTermTempAddress = 4;
 unsigned long time;
 unsigned long timeForOtherStuff;
 unsigned long timeForSerialReset;
+
+bool mixerImpulseLastState = false;
+unsigned long lastMixerImpulseTime;
+bool mixerError = false;
 
 unsigned long timeForMove;
 
@@ -164,6 +170,53 @@ char receivedChars[numChars]; // an array to store the received data
 bool newData = false;
 
 float dataNumber = 0;
+
+void MixerSwitchTurnCommand(bool command)
+{
+  // in case of some nasty fuckup, turn everything off
+  if(mixerError)
+  {
+    digitalWrite(mjesalicaSwitch, LOW);
+    startMixer = false;
+    digitalWrite(goToLeft, LOW);
+    digitalWrite(goToRight, LOW);
+    return;
+  }
+
+  if (command == true)
+  {
+    digitalWrite(mjesalicaSwitch, HIGH);
+    lastMixerImpulseTime = millis();
+    startMixer = true;
+  }
+  else if (command == false)
+  {
+    digitalWrite(mjesalicaSwitch, LOW);
+    startMixer = false;
+  }
+}
+
+void MixerCheckState()
+{
+  if(startMixer == true)
+  {
+    if(digitalRead(mixerImpulsePin) == HIGH && mixerImpulseLastState == false)
+    {
+      mixerImpulseLastState = true;
+      lastMixerImpulseTime = millis();
+    }
+    else if(digitalRead(mixerImpulsePin) == LOW && mixerImpulseLastState == true)
+    {
+      mixerImpulseLastState = false;
+      lastMixerImpulseTime = millis();
+    }
+    if(1000 < millis() - lastMixerImpulseTime)
+    {
+      MixerSwitchTurnCommand(false);
+      mixerError = true;
+    }
+  }
+}
 
 void recvWithStartEndMarkers()
 {
@@ -309,7 +362,7 @@ void trigger3()
 { // move to left
   if (digitalRead(termogenSide) != LOW && moveButtonsPressed == false)
   {
-    digitalWrite(mjesalicaSwitch, HIGH);
+    MixerSwitchTurnCommand(true);
     timeForStartMovingMixer = millis();
     moveToLeft = true;
     termogenSideWatch = true;
@@ -322,7 +375,7 @@ void trigger4()
   moveToLeft = false;
   termogenSideWatch = false;
   digitalWrite(goToLeft, LOW);
-  digitalWrite(mjesalicaSwitch, LOW);
+  MixerSwitchTurnCommand(false);
   moveButtonsPressed = false;
 }
 
@@ -330,7 +383,7 @@ void trigger5()
 { // move to right
   if (digitalRead(goreSide) != LOW && moveButtonsPressed == false)
   {
-    digitalWrite(mjesalicaSwitch, HIGH);
+    MixerSwitchTurnCommand(true);
     timeForStartMovingMixer = millis();
     moveToRight = true;
     goreSideWatch = true;
@@ -343,7 +396,7 @@ void trigger6()
   moveToRight = false;
   goreSideWatch = false;
   digitalWrite(goToRight, LOW);
-  digitalWrite(mjesalicaSwitch, LOW);
+  MixerSwitchTurnCommand(false);
   moveButtonsPressed = false;
 }
 
@@ -499,8 +552,7 @@ void trigger20()
     myNex.writeStr("b3.txt", "S");
     myNex.writeNum("b3.bco", 61440);
     mixMode = MixMode::STOP;
-    startMixer = false;
-    digitalWrite(mjesalicaSwitch, LOW);
+    MixerSwitchTurnCommand(false);
     digitalWrite(goToLeft, LOW);
     digitalWrite(goToRight, LOW);
   }
@@ -555,6 +607,7 @@ void setup()
   pinMode(ventSwitch, OUTPUT);
   pinMode(plamenikSwitch, OUTPUT);
   pinMode(mjesalicaSwitch, OUTPUT);
+  pinMode(mixerImpulsePin, INPUT);
 
   digitalWrite(goToLeft, LOW);
   digitalWrite(goToRight, LOW);
@@ -640,8 +693,7 @@ void loop()
       }
       if (3000 <= millis() - timeBurner)
       {
-        digitalWrite(mjesalicaSwitch, HIGH); // starts mixer
-        startMixer = true;
+        MixerSwitchTurnCommand(true); // starts mixer
         if (firstTimeMixer == false)
         {
           timeMixer = millis();
@@ -732,10 +784,10 @@ void loop()
     {
       if (startMixer == false)
       {
-        digitalWrite(mjesalicaSwitch, HIGH);
-        startMixer = true;
+        MixerSwitchTurnCommand(true);
         timeMixer = millis();
       }
+      
       if (startMixer == true && startLeft == true && 5000 < millis() - timeMixer)
       {
         goLeft();
@@ -768,8 +820,7 @@ void loop()
   {
     // digitalWrite(plamenikSwitch, LOW);
     CurrentPage = 0;
-    startMixer = false;
-    digitalWrite(mjesalicaSwitch, LOW);
+    MixerSwitchTurnCommand(false);
     digitalWrite(goToLeft, LOW);
     digitalWrite(goToRight, LOW);
     digitalWrite(ventSwitch, LOW);
@@ -828,7 +879,7 @@ void loop()
     timeIntervalNextion = millis();
   }
 
-  if (moveButtonsPressed == true)
+  if (moveButtonsPressed == true && mixerError == false)
   {
     // turn on posmak when button is pressed
     if (moveToLeft == true && 500 <= (millis() - timeForStartMovingMixer) && digitalRead(termogenSide) != LOW)
@@ -853,7 +904,7 @@ void loop()
   }
   // stopping sqitch is hit!!
 
-  if (digitalRead(termogenSide) == LOW && termogenSideWatch == true && moveButtonsPressed == false)
+  if (digitalRead(termogenSide) == LOW && termogenSideWatch == true && moveButtonsPressed == false && mixerError == false)
   {
     digitalWrite(goToLeft, LOW);
     termogenSideWatch = false;
@@ -861,16 +912,14 @@ void loop()
     startLeft = false;
     startRight = true;
     if (mixerDelayTime > 0)
-    {
-      digitalWrite(mjesalicaSwitch, LOW);
-      startMixer = false;
-    }
+      MixerSwitchTurnCommand(false);
+
     time = millis();
     timeChangeDirection = millis();
     // Serial.print("Desno");
     // Serial.print("\n");
   }
-  if (digitalRead(goreSide) == LOW && goreSideWatch == true && moveButtonsPressed == false)
+  if (digitalRead(goreSide) == LOW && goreSideWatch == true && moveButtonsPressed == false && mixerError == false)
   {
     digitalWrite(goToRight, LOW);
     goreSideWatch = false;
@@ -878,16 +927,15 @@ void loop()
     startRight = false;
     startLeft = true;
     if (mixerDelayTime > 0)
-    {
-      digitalWrite(mjesalicaSwitch, LOW);
-      startMixer = false;
-    }
+      MixerSwitchTurnCommand(false);
+
     time = millis();
     timeChangeDirection = millis();
     // Serial.print("Lijevo");
     // Serial.print("\n");
   }
 
+  MixerCheckState();
   myNex.NextionListen();
   wdt_reset();
 }
