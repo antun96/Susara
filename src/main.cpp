@@ -117,6 +117,7 @@ unsigned long timeForOtherStuffInterval = 5000;
 // time gap to wait for change direction
 unsigned long timeInterval = 2000;
 unsigned long timeForSerialResetInterval = 100;
+unsigned long MINIMUM_MIXER_SWITCH_DELAY = 5000;
 
 bool startLeft = false;
 bool startRight = false;
@@ -310,7 +311,14 @@ void updatePage1Values()
   {
     myNex.writeStr("b2.txt", "C");
   }
-  if (mixMode == MixMode::MIX)
+
+  if(mixerError)
+  {
+    myNex.writeStr("b3.txt", "E");
+    myNex.writeNum("b3.bco", 61530);
+
+  }
+  else if (mixMode == MixMode::MIX)
   {
     myNex.writeStr("b3.txt", "A");
     myNex.writeNum("b3.bco", 1024);
@@ -544,26 +552,6 @@ void trigger19()
   myNex.writeNum("n2.val", (int)minTermTemp);
 }
 
-void trigger20()
-{
-  // stop mixer
-  if (mixMode == MixMode::MIX)
-  {
-    myNex.writeStr("b3.txt", "S");
-    myNex.writeNum("b3.bco", 61440);
-    mixMode = MixMode::STOP;
-    MixerSwitchTurnCommand(false);
-    digitalWrite(goToLeft, LOW);
-    digitalWrite(goToRight, LOW);
-  }
-  else if (mixMode == MixMode::STOP)
-  {
-    myNex.writeStr("b3.txt", "A");
-    myNex.writeNum("b3.bco", 1024);
-    mixMode = MixMode::MIX;
-  }
-}
-
 void goLeft()
 {
   if (digitalRead(termogenSide) != LOW)
@@ -587,6 +575,49 @@ void goRight()
     timeFromLastDirectionChange = millis();
     goreSideWatch = true;
     directionChangeToRight = true;
+  }
+}
+
+void trigger20()
+{
+  if(mixerError)
+  {
+    mixerError = false;
+    myNex.writeStr("b3.txt", "S");
+    myNex.writeNum("b3.bco", 61440);
+    mixMode = MixMode::STOP;
+    MixerSwitchTurnCommand(false);
+    digitalWrite(goToLeft, LOW);
+    digitalWrite(goToRight, LOW);
+    return;
+  }
+  // stop mixer
+  if (mixMode == MixMode::MIX)
+  {
+    myNex.writeStr("b3.txt", "S");
+    myNex.writeNum("b3.bco", 61440);
+    mixMode = MixMode::STOP;
+    MixerSwitchTurnCommand(false);
+    digitalWrite(goToLeft, LOW);
+    digitalWrite(goToRight, LOW);
+  }
+  else if (mixMode == MixMode::STOP)
+  {
+    myNex.writeStr("b3.txt", "A");
+    myNex.writeNum("b3.bco", 1024);
+    mixMode = MixMode::MIX;
+    if(digitalRead(goreSide) != LOW)
+    {
+      goRight();
+    }
+    else if(digitalRead(termogenSide) != LOW)
+    {
+      goLeft();
+    }
+    else
+    {
+      goLeft();
+    }
   }
 }
 
@@ -780,8 +811,26 @@ void loop()
       timeForOtherStuff = millis();
     }
 
-    if (mixerDelayTime * 60 * 1000 < millis() - time && mixMode == MixMode::MIX)
+    if (mixerDelayTime != 0 && mixerDelayTime * 60 * 1000 < millis() - time && mixMode == MixMode::MIX)
     {
+      if (startMixer == false)
+      {
+        MixerSwitchTurnCommand(true);
+        timeMixer = millis();
+      }
+      
+      if (startMixer == true && startLeft == true && 5000 < millis() - timeMixer)
+      {
+        goLeft();
+      }
+      else if (startMixer == true && startRight == true && 5000 < millis() - timeMixer)
+      {
+        goRight();
+      }
+    }
+    else if(mixerDelayTime == 0 && MINIMUM_MIXER_SWITCH_DELAY < millis() - time && mixMode == MixMode::MIX)
+    {
+
       if (startMixer == false)
       {
         MixerSwitchTurnCommand(true);
@@ -865,7 +914,14 @@ void loop()
     {
       myNex.writeStr("b2.txt", "C");
     }
-    if (mixMode == MixMode::MIX)
+
+    if(mixerError)
+    {
+      myNex.writeStr("b3.txt", "E");
+      myNex.writeNum("b3.bco", 61530);
+
+    }
+    else if (mixMode == MixMode::MIX)
     {
       myNex.writeStr("b3.txt", "A");
       myNex.writeNum("b3.bco", 1024);
