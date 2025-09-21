@@ -211,7 +211,7 @@ void MixerCheckState()
       mixerImpulseLastState = false;
       lastMixerImpulseTime = millis();
     }
-    if(1000 < millis() - lastMixerImpulseTime)
+    if(5000 < millis() - lastMixerImpulseTime)
     {
       MixerSwitchTurnCommand(false);
       mixerError = true;
