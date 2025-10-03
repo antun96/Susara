@@ -8,7 +8,11 @@
 
 #define RS485Transmit HIGH
 #define RS485Receive LOW
-SoftwareSerial SSerial(12, 13); // RX, TX
+// SoftwareSerial Communication
+int SRX = 12;
+int STX = 13;
+#define SSerialTxControl A0       // RS485 Direction control
+SoftwareSerial SSerial(SRX, STX); // RX, TX
 EasyNex myNex(Serial);
 
 // Pin init
@@ -34,11 +38,6 @@ int thermoSCK = 9;
 int thermoSO = 10;
 int thermoCS = 11;
 
-// SoftwareSerial Communication
-int SRX = 12;
-int STX = 13;
-#define SSerialTxControl A0 // RS485 Direction control
-
 int mixerImpulsePin = A5;
 
 float maxSeedTemp;
@@ -46,43 +45,28 @@ float maxTermTemp;
 float minTermTemp;
 MAX6675 thermocouple(thermoSCK, thermoCS, thermoSO);
 
-int CurrentPage = 0;
-int currentPageAddress = 0;
-int setMaxTermTempAddress = 1;
-int setMaxSeedTempAddress = 2;
-int mixerDelayTimeAddress = 3;
-int setMinTermTempAddress = 4;
+// EEPROM addresses
+int setMinTermTempAddress = 1;
+int setMaxTermTempAddress = 2;
+int setMaxSeedTempAddress = 3;
+int mixerDelayTimeAddress = 4;
+int totalWorkingHoursAddress = 5;
+int totalBurnerHoursAddress = 8;
 
-unsigned long time;
-unsigned long timeForOtherStuff;
-unsigned long timeForSerialReset;
+unsigned long timeMixerHitEndSwitch;
+unsigned long lastReadingUpdatingTime;
 
 bool mixerImpulseLastState = false;
 unsigned long lastMixerImpulseTime;
 bool mixerError = false;
 
-unsigned long timeForMove;
-
-unsigned long timeForStartMovingMixer;
-
 bool moveButtonsPressed = false;
-bool moveToRight = false;
-bool moveToLeft = false;
-
-unsigned long timeOfBurnerShutdown[20];
-int numberOfShutdowns = 0;
-
-// start procedures
-unsigned long timeForStart;
 
 unsigned long timeBurner;
-unsigned long timeMixer;
-unsigned long timeForShutdown;
-unsigned long timeChangeDirection;
-unsigned long timeForShutdownMixer;
+unsigned long timeMixerTurnOn;
 unsigned long timeIntervalNextion;
-unsigned long timeToLog;
 
+/// @brief Used in boot up procedure to create time gap between turning on sequences
 unsigned long timeOfLastTurnOnSequence = 0;
 
 // heatModes
@@ -108,74 +92,79 @@ typedef enum
 
 typedef enum
 {
-  NONE = -1,
-  FAN = 0,
-  BURNER = 1,
-  MIXER = 2,
-  MIXER_DIRECTION = 3,
-  DONE = 4,
+  START,
+  FAN,
+  BURNER,
+  MIXER,
+  MIXER_MOVE,
+  DONE,
 } BootSequence;
 
-BootSequence bootSequence = BootSequence::NONE;
+typedef enum
+{
+  BOOTING,
+  DRYING,
+  SHUTTING_DOWN,
+  WAINTING_FOR_START,
+} OperationMode;
+
+typedef enum
+{
+  START_SCREEN,
+  DRYING_SCREEN,
+  SETTINGS_SCREEN,
+  SETTINGS_SCREEN_FROM_DRYING,
+  STAT_SCREEN
+} NextionScreen;
+
+BootSequence bootSequence = BootSequence::START;
 MovingDirection mixerMovingDirection = MovingDirection::NONE;
-bool mixerMove = false;
-unsigned long lastMixerChangeTime = 0;
 MixMode mixMode;
 HeatMode heatMode;
-
-bool stopMoving = false;
+OperationMode operationMode = OperationMode::WAINTING_FOR_START;
+NextionScreen currentPage = NextionScreen::START_SCREEN;
 
 float mixerDelayTime = 0;
 
-unsigned long timeForOtherStuffInterval = 5000;
-// time gap to wait for change direction
-unsigned long timeInterval = 2000;
-unsigned long timeForSerialResetInterval = 100;
+unsigned long READING_UPDATING_INTERVAL = 5000;
 
+/// @brief time between mixer turn on and mixer movement
+unsigned long SWITCH_STATE_TIME_INTERVAL = 2000;
 /// @brief minimum time mixer must be off before it can change direction
 unsigned long MINIMUM_MIXER_SWITCH_DELAY = 5000;
 /// @brief maximum time without impulse on mixer pin, if exceeded, error is triggered
-unsigned long MAXIMUM_TIME_WITHOUT_IMPULSE = 1000;
+unsigned long MAXIMUM_TIME_WITHOUT_IMPULSE = 2000;
+
+/// @brief time interval for updating working hours in RAM
+unsigned long TIME_INTERVAL_WORKING_HOURS_RAM = 10000; // 10 seconds
+/// @brief time interval for updating working hours in EEPROM, described in seconds
+unsigned long TIME_INTERVAL_WORKING_HOURS_EEPROM = 600; // 10 minutes
 /// @brief time gap between turning on sequences
 unsigned long TIME_GAP_BETWEEN_TURNING_ON_SEQUENCES = 15000;
 
-bool startLeft = false;
-bool startRight = false;
-
-bool startDrying = false;
-bool doneBooting = false;
-bool stopDrying = false;
-
-bool resetSerial = false;
-String order;
-
 bool fanState = false;
-bool startMixer = false;
-bool termogenOverheated = false;
-double tempOfThermogen;
-double tempOfSeed = 0;
-double tempOutside;
-bool kosticePostigleTemp = false;
+bool mixerState = false;
 bool burnerState = false;
-bool doNotTurnOnPlamenikEverAgain = false;
-unsigned long timeDrying;
-unsigned long timeBurnerOn;
-unsigned long timeTurnOnBurner;
-unsigned long timeTurnOffBurner;
-unsigned long timeOfShutdownStart;
+bool termogenOverheated = false;
+double thermogenTemperature;
+double seedTemperature = 0;
+bool reachedMaxSeedTemp = false;
+
+unsigned long periodicStoreTimeTask;
+
+unsigned long timeBurnerOnTact;
+unsigned long timeDryerOnTact;
+unsigned long sessionTimeDryingSeconds;
+unsigned long sessionTimeBurnerOnSeconds;
+unsigned long totalTimeDryingSeconds;
+unsigned long totalTimeBurnerOnSeconds;
+unsigned long totalTimeDryingLastSave;
+unsigned long totalTimeBurnerLastSave;
 
 bool shutDownTemperatureReached = false;
 
 bool readSeedTemperature = false;
 bool sendLogMessage = false;
-
-int calculateTime = 0;
-int calculateHours = 0;
-int calculateMinutes = 0;
-
-bool lie = false;
-unsigned long lieTime;
-int turnCount = 0;
 
 char receivedChar;
 int stageNumber = 0;
@@ -188,32 +177,72 @@ bool newData = false;
 
 float dataNumber = 0;
 
-void MixerDirectionChanger()
+/// @brief Check if left end switch is pressed for safety, then move mixer to left
+void goLeft()
 {
-  if (digitalRead(rightEndSwitch) == LOW)
-  {
-    mixerMovingDirection = MovingDirection::LEFT;
-    goLeft();
+  if (digitalRead(leftEndSwitch) == LOW)
     return;
-  }
-  else if (digitalRead(leftEndSwitch) == LOW)
-  {
-    mixerMovingDirection = MovingDirection::RIGHT;
-    goRight();
-    return;
-  }
 
-  mixerMovingDirection = MovingDirection::RIGHT;
-  goRight();
+  digitalWrite(rightContactorPin, LOW);
+  digitalWrite(leftContactorPin, HIGH);
 }
 
+/// @brief Check if right end switch is pressed for safety, then move mixer to right
+void goRight()
+{
+  if (digitalRead(rightEndSwitch) == LOW)
+    return;
+
+  digitalWrite(leftContactorPin, LOW);
+  digitalWrite(rightContactorPin, HIGH);
+}
+
+/// @brief Check if mixer can move and moves it
+void MoveMixer()
+{
+  // turn on moveToLeftContactor when button is pressed
+  if (mixerMovingDirection == MovingDirection::LEFT)
+  {
+    // shutdown moving left when mixer hits left end switch
+    if (digitalRead(leftEndSwitch) == LOW)
+    {
+      digitalWrite(leftContactorPin, LOW);
+      mixerMovingDirection = MovingDirection::NONE;
+      return;
+    }
+    else if (SWITCH_STATE_TIME_INTERVAL <= (millis() - timeMixerTurnOn) && digitalRead(leftEndSwitch) != LOW)
+    {
+      goLeft();
+      return;
+    }
+  }
+  // turn on moveToRightContactor when button is pressed
+  else if (mixerMovingDirection == MovingDirection::RIGHT)
+  {
+    // shutdown moving right when mixer hits right end switch
+    if (digitalRead(rightEndSwitch) == LOW)
+    {
+      digitalWrite(rightContactorPin, LOW);
+      mixerMovingDirection = MovingDirection::NONE;
+      return;
+    }
+    else if (SWITCH_STATE_TIME_INTERVAL <= (millis() - timeMixerTurnOn) && digitalRead(rightEndSwitch) != LOW)
+    {
+      goRight();
+      return;
+    }
+  }
+}
+
+/// @brief /// Turn mixer on or off, checks for error
+/// @param command
 void MixerTurnCommand(bool command)
 {
   // in case of some nasty fuckup, turn everything off
   if (mixerError)
   {
     digitalWrite(mixerContactorPin, LOW);
-    startMixer = false;
+    mixerState = false;
     digitalWrite(leftContactorPin, LOW);
     digitalWrite(rightContactorPin, LOW);
     return;
@@ -222,36 +251,67 @@ void MixerTurnCommand(bool command)
   if (command == true)
   {
     digitalWrite(mixerContactorPin, HIGH);
+    mixerState = true;
+    timeMixerTurnOn = millis();
     lastMixerImpulseTime = millis();
-    startMixer = true;
   }
   else if (command == false)
   {
     digitalWrite(mixerContactorPin, LOW);
-    startMixer = false;
+    mixerState = false;
+  }
+}
+
+/// @brief Control mixer operation based on mode and timing
+void MixerControl()
+{
+  if (mixMode == MixMode::STOP || mixerError)
+    return;
+
+  // logic to use default time if there is zero delay time
+  unsigned long delay = 0;
+  if (mixerDelayTime == 0)
+    delay = MINIMUM_MIXER_SWITCH_DELAY;
+  else
+    delay = mixerDelayTime * 60 * 1000;
+
+  if (delay < millis() - timeMixerHitEndSwitch)
+  {
+    if (mixerState == false)
+      MixerTurnCommand(true);
+
+    if (digitalRead(rightEndSwitch) == LOW)
+      mixerMovingDirection = MovingDirection::LEFT;
+    else if (digitalRead(leftEndSwitch) == LOW)
+      mixerMovingDirection = MovingDirection::RIGHT;
+    else if (mixerMovingDirection == MovingDirection::NONE)
+      mixerMovingDirection = MovingDirection::RIGHT;
+
+    return;
   }
 }
 
 /// @brief check if mixer is working properly, if there is a change of state on impulse pin, mixer is working properly
-void MixerCheckState()
+/// if there is no change of state for too long, mixer error is triggered
+void CheckMixerState()
 {
-  if (startMixer == true)
+  if (mixerState != true)
+    return;
+  
+  if (digitalRead(mixerImpulsePin) == HIGH && mixerImpulseLastState == false)
   {
-    if (digitalRead(mixerImpulsePin) == HIGH && mixerImpulseLastState == false)
-    {
-      mixerImpulseLastState = true;
-      lastMixerImpulseTime = millis();
-    }
-    else if (digitalRead(mixerImpulsePin) == LOW && mixerImpulseLastState == true)
-    {
-      mixerImpulseLastState = false;
-      lastMixerImpulseTime = millis();
-    }
-    if (MAXIMUM_TIME_WITHOUT_IMPULSE < millis() - lastMixerImpulseTime)
-    {
-      MixerTurnCommand(false);
-      mixerError = true;
-    }
+    mixerImpulseLastState = true;
+    lastMixerImpulseTime = millis();
+  }
+  else if (digitalRead(mixerImpulsePin) == LOW && mixerImpulseLastState == true)
+  {
+    mixerImpulseLastState = false;
+    lastMixerImpulseTime = millis();
+  }
+  if (MAXIMUM_TIME_WITHOUT_IMPULSE < millis() - lastMixerImpulseTime)
+  {
+    MixerTurnCommand(false);
+    mixerError = true;
   }
 }
 
@@ -259,17 +319,23 @@ void MixerCheckState()
 /// @param force - forces screen update
 void UpdateDryingPageParameters(bool force)
 {
-  if (CurrentPage != 1)
+  if (currentPage != NextionScreen::DRYING_SCREEN)
     return;
   else if (force == false && 2500 > millis() - timeIntervalNextion)
     return;
 
-  calculateTime = (millis() - timeDrying) / 1000 / 60;
-  calculateHours = calculateTime / 60;
-  calculateMinutes = calculateTime - calculateHours * 60;
-  myNex.writeNum("n0.val", (int)tempOfThermogen);
-  myNex.writeNum("n1.val", (int)tempOfSeed);
-  myNex.writeStr("t6.txt", String(calculateHours) + ":" + String(calculateMinutes));
+  int calculateSessionDryingTime = sessionTimeDryingSeconds / 60;
+  int sessionDryingHours = calculateSessionDryingTime / 60;
+  int sessionDryingMinutes = calculateSessionDryingTime - sessionDryingHours * 60;
+
+  int calculateBurnerTime = sessionTimeBurnerOnSeconds / 60;
+  int sessionBurnerHours = calculateBurnerTime / 60;
+  int sessionBurnerMinutes = calculateBurnerTime - sessionBurnerHours * 60;
+
+  myNex.writeNum("n0.val", (int)thermogenTemperature);
+  myNex.writeNum("n1.val", (int)seedTemperature);
+  myNex.writeStr("t6.txt", String(sessionDryingHours) + ":" + String(sessionDryingMinutes));
+  myNex.writeStr("t8.txt", String(sessionBurnerHours) + ":" + String(sessionBurnerMinutes));
   if (burnerState == true)
   {
     myNex.writeNum("b2.bco", 61440);
@@ -304,6 +370,12 @@ void UpdateDryingPageParameters(bool force)
   }
 
   timeIntervalNextion = millis();
+}
+
+void mixerDelayTimeUpdate()
+{
+  String data = String(mixerDelayTime, 1);
+  myNex.writeStr("t5.txt", data);
 }
 
 void UpdateSettingsParameters()
@@ -358,16 +430,10 @@ void convertStringToFloat()
 {
   if (newData == true)
   {
-    tempOfSeed = 0;                   // new for this version
-    tempOfSeed = atof(receivedChars); // new for this version
+    seedTemperature = 0;                   // new for this version
+    seedTemperature = atof(receivedChars); // new for this version
     newData = false;
   }
-}
-
-void mixerDelayTimeUpdate()
-{
-  String data = String(mixerDelayTime, 1);
-  myNex.writeStr("t5.txt", data);
 }
 
 void SendSSMessage(String messageBody)
@@ -385,10 +451,8 @@ void SendSSMessage(String messageBody)
 /// @brief Start button is pressed, drying begins
 void trigger1()
 {
-  stopDrying = false;
-  startDrying = true;
-  doneBooting = false;
-  CurrentPage = 1;
+  operationMode = OperationMode::BOOTING;
+  currentPage = NextionScreen::DRYING_SCREEN;
   // TODO: test this if microcontroller is too fast
   UpdateDryingPageParameters(true);
 }
@@ -396,23 +460,23 @@ void trigger1()
 /// @brief Stop button is pressed, drying stops
 void trigger8()
 {
-  CurrentPage = 0;
-  startDrying = false;
-  doneBooting = false;
-  stopDrying = true;
+  currentPage = NextionScreen::START_SCREEN;
+  totalTimeDryingSeconds += (millis() - timeDryerOnTact) / 1000;
+  sessionTimeDryingSeconds += (millis() - timeDryerOnTact) / 1000;
+  operationMode = OperationMode::SHUTTING_DOWN;
 }
 
 /// @brief Settings from home screen
 void trigger2()
 {
-  CurrentPage = 2;
+  currentPage = NextionScreen::SETTINGS_SCREEN;
   UpdateSettingsParameters();
 }
 
 /// @brief Settings from drying screen
 void trigger7()
 {
-  CurrentPage = 3;
+  currentPage = NextionScreen::SETTINGS_SCREEN_FROM_DRYING;
   UpdateSettingsParameters();
 }
 
@@ -422,8 +486,7 @@ void trigger3()
   if (digitalRead(leftEndSwitch) != LOW && moveButtonsPressed == false)
   {
     MixerTurnCommand(true);
-    timeForStartMovingMixer = millis();
-    moveToLeft = true;
+    mixerMovingDirection = MovingDirection::LEFT;
     moveButtonsPressed = true;
   }
 }
@@ -431,8 +494,8 @@ void trigger3()
 /// @brief Screen button moved to unpressed state, stop moving left and stop mixer
 void trigger4()
 {
-  moveToLeft = false;
   digitalWrite(leftContactorPin, LOW);
+  mixerMovingDirection = MovingDirection::NONE;
   MixerTurnCommand(false);
   moveButtonsPressed = false;
 }
@@ -443,8 +506,7 @@ void trigger5()
   if (digitalRead(rightEndSwitch) != LOW && moveButtonsPressed == false)
   {
     MixerTurnCommand(true);
-    timeForStartMovingMixer = millis();
-    moveToRight = true;
+    mixerMovingDirection = MovingDirection::RIGHT;
     moveButtonsPressed = true;
   }
 }
@@ -452,8 +514,8 @@ void trigger5()
 /// @brief Screen button moved to unpressed state, stop moving right and stop mixer
 void trigger6()
 {
-  moveToRight = false;
   digitalWrite(rightContactorPin, LOW);
+  mixerMovingDirection = MovingDirection::NONE;
   MixerTurnCommand(false);
   moveButtonsPressed = false;
 }
@@ -461,14 +523,14 @@ void trigger6()
 /// @brief back from settings to drying
 void trigger14()
 {
-  CurrentPage = 1;
+  currentPage = NextionScreen::DRYING_SCREEN;
   UpdateDryingPageParameters(true);
 }
 
-/// @brief back from settings to home
+/// @brief back from settings or stats to home
 void trigger9()
 {
-  CurrentPage = 0;
+  currentPage = NextionScreen::START_SCREEN;
 }
 
 /// @brief Decrement maximum seed temperature
@@ -476,7 +538,7 @@ void trigger10()
 {
   maxSeedTemp = maxSeedTemp - 1;
   EEPROM.update(setMaxSeedTempAddress, (int)maxSeedTemp);
-  if (CurrentPage == 3 || CurrentPage == 2)
+  if (currentPage == NextionScreen::SETTINGS_SCREEN_FROM_DRYING || currentPage == NextionScreen::SETTINGS_SCREEN)
     UpdateSettingsParameters();
 }
 
@@ -485,7 +547,7 @@ void trigger11()
 {
   maxSeedTemp = maxSeedTemp + 1;
   EEPROM.update(setMaxSeedTempAddress, (int)maxSeedTemp);
-  if (CurrentPage == 3 || CurrentPage == 2)
+  if (currentPage == NextionScreen::SETTINGS_SCREEN_FROM_DRYING || currentPage == NextionScreen::SETTINGS_SCREEN)
     UpdateSettingsParameters();
 }
 
@@ -494,7 +556,7 @@ void trigger12()
 {
   maxTermTemp = maxTermTemp - 1;
   EEPROM.update(setMaxTermTempAddress, (int)maxTermTemp);
-  if (CurrentPage == 3 || CurrentPage == 2)
+  if (currentPage == NextionScreen::SETTINGS_SCREEN_FROM_DRYING || currentPage == NextionScreen::SETTINGS_SCREEN)
     UpdateSettingsParameters();
 }
 
@@ -503,26 +565,27 @@ void trigger13()
 {
   maxTermTemp = maxTermTemp + 1;
   EEPROM.update(setMaxTermTempAddress, (int)maxTermTemp);
-  if (CurrentPage == 3 || CurrentPage == 2)
+  if (currentPage == NextionScreen::SETTINGS_SCREEN_FROM_DRYING || currentPage == NextionScreen::SETTINGS_SCREEN)
     UpdateSettingsParameters();
 }
 
 /// @brief Turn off burner
-void TurnDownPlamenik()
+void TurnDownBurner()
 {
   digitalWrite(burnerRelayPin, LOW);
-  timeBurnerOn += (millis() - timeTurnOnBurner);
+  totalTimeBurnerOnSeconds += (millis() - timeBurnerOnTact) / 1000;
+  sessionTimeBurnerOnSeconds += (millis() - timeBurnerOnTact) / 1000;
   burnerState = false;
-  if (CurrentPage == 1)
+  if (currentPage == NextionScreen::DRYING_SCREEN)
     myNex.writeNum("b2.bco", 2300);
 }
 
-void TurnOnPlamenik()
+void TurnOnBurner()
 {
-  timeTurnOnBurner = millis();
+  timeBurnerOnTact = millis();
   digitalWrite(burnerRelayPin, HIGH);
   burnerState = true;
-  if (CurrentPage == 1)
+  if (currentPage == NextionScreen::DRYING_SCREEN)
   {
     if (heatMode == HeatMode::AUTO)
     {
@@ -539,15 +602,13 @@ void trigger15()
   {
     heatMode = HeatMode::COOL;
     myNex.writeStr("b2.txt", "C");
-    doNotTurnOnPlamenikEverAgain = true;
-    TurnDownPlamenik();
+    TurnDownBurner();
   }
   else if (heatMode == HeatMode::COOL)
   {
     heatMode = HeatMode::AUTO;
-    doNotTurnOnPlamenikEverAgain = false;
-    if (startDrying == true && doneBooting == true && tempOfSeed < maxSeedTemp)
-      TurnOnPlamenik();
+    if (operationMode == OperationMode::DRYING && seedTemperature < maxSeedTemp && burnerState == false && termogenOverheated == false && thermogenTemperature < maxTermTemp)
+      TurnOnBurner();
 
     myNex.writeStr("b2.txt", "A");
   }
@@ -588,26 +649,6 @@ void trigger19()
   myNex.writeNum("n2.val", (int)minTermTemp);
 }
 
-/// @brief Check if left end switch is pressed for safety, then move mixer to left
-void goLeft()
-{
-  if (digitalRead(leftEndSwitch) == LOW)
-    return;
-  
-  digitalWrite(rightContactorPin, LOW);
-  digitalWrite(leftContactorPin, HIGH);
-}
-
-/// @brief Check if right end switch is pressed for safety, then move mixer to right
-void goRight()
-{
-  if (digitalRead(rightEndSwitch) == LOW)
-    return;
-
-  digitalWrite(leftContactorPin, LOW);
-  digitalWrite(rightContactorPin, HIGH);
-}
-
 /// @brief Start/Stop mixer or reset error
 void trigger20()
 {
@@ -620,6 +661,7 @@ void trigger20()
     MixerTurnCommand(false);
     digitalWrite(leftContactorPin, LOW);
     digitalWrite(rightContactorPin, LOW);
+    mixerMovingDirection = MovingDirection::NONE;
     return;
   }
 
@@ -632,18 +674,82 @@ void trigger20()
     MixerTurnCommand(false);
     digitalWrite(leftContactorPin, LOW);
     digitalWrite(rightContactorPin, LOW);
+    mixerMovingDirection = MovingDirection::NONE;
   }
   else if (mixMode == MixMode::STOP)
   {
     myNex.writeStr("b3.txt", "A");
     myNex.writeNum("b3.bco", 1024);
     mixMode = MixMode::MIX;
-    // if (digitalRead(rightEndSwitch) != LOW)
-    //   goRight();
-    // else if (digitalRead(leftEndSwitch) != LOW)
-    //   goLeft();
-    // else
-    //   goLeft();
+  }
+}
+
+void trigger21()
+{
+  currentPage = NextionScreen::STAT_SCREEN;
+  int calculateTime = totalTimeDryingSeconds / 60;
+  int calculateHours = calculateTime / 60;
+  int calculateMinutes = calculateTime - calculateHours * 60;
+
+  int calculateBurnerTime = totalTimeBurnerOnSeconds / 60;
+  int calculateBurnerHours = calculateBurnerTime / 60;
+  int calculateBurnerMinutes = calculateBurnerTime - calculateBurnerHours * 60;
+
+  myNex.writeStr("t3.txt", String(calculateHours) + ":" + String(calculateMinutes));
+  myNex.writeStr("t4.txt", String(calculateBurnerHours) + ":" + String(calculateBurnerMinutes));
+}
+
+void ReadSensors()
+{
+  SendSSMessage("seed");
+  recvWithStartEndMarkers();
+  convertStringToFloat();
+  thermogenTemperature = thermocouple.readCelsius();
+}
+
+void PeriodicTasks()
+{
+  if (READING_UPDATING_INTERVAL < millis() - lastReadingUpdatingTime)
+  {
+    ReadSensors();
+    if (currentPage == 1)
+      UpdateDryingPageParameters(false);
+
+    lastReadingUpdatingTime = millis();
+  }
+}
+
+void TemperatureControl()
+{
+  if(heatMode == HeatMode::COOL)
+  {
+    if (burnerState == true)
+      TurnDownBurner();
+    return;
+  }
+  if (seedTemperature > maxSeedTemp && reachedMaxSeedTemp == false)
+  {
+    reachedMaxSeedTemp = true;
+    TurnDownBurner();
+    return;
+  }
+  else if (seedTemperature < 35)
+    reachedMaxSeedTemp = false;
+
+  if (thermogenTemperature > maxTermTemp)
+  {
+    TurnDownBurner();
+    termogenOverheated = true;
+  }
+  else if (reachedMaxSeedTemp == true && seedTemperature <= MIN_SEED_TEMPERATURE && thermogenTemperature < maxTermTemp)
+  {
+    TurnOnBurner();
+    reachedMaxSeedTemp = false;
+  }
+  else if (reachedMaxSeedTemp == false && termogenOverheated == true && thermogenTemperature < minTermTemp)
+  {
+    TurnOnBurner();
+    termogenOverheated = false;
   }
 }
 
@@ -655,6 +761,7 @@ void BootTurnOn(BootSequence sequence)
     digitalWrite(fanContactorPin, HIGH);
     fanState = true;
     timeOfLastTurnOnSequence = millis();
+    timeDryerOnTact = millis();
     bootSequence = BootSequence::BURNER;
     break;
   case BootSequence::BURNER:
@@ -666,14 +773,14 @@ void BootTurnOn(BootSequence sequence)
   case BootSequence::MIXER:
     MixerTurnCommand(true);
     timeOfLastTurnOnSequence = millis();
-    bootSequence = BootSequence::MIXER_DIRECTION;
+    bootSequence = BootSequence::MIXER_MOVE;
     break;
-  case BootSequence::MIXER_DIRECTION:
-    MixerDirectionChanger();
+  case BootSequence::MIXER_MOVE:
+    MoveMixer();
     timeOfLastTurnOnSequence = millis();
     bootSequence = BootSequence::DONE;
   case BootSequence::DONE:
-    doneBooting = true;
+    operationMode = OperationMode::DRYING;
     break;
   default:
     break;
@@ -690,127 +797,23 @@ void BootUpProcedure()
 
 void DryingProcess()
 {
-  if (timeForOtherStuffInterval <= millis() - timeForOtherStuff)
-  {
-    SendSSMessage("seed");
-    recvWithStartEndMarkers();
-    convertStringToFloat();
-    tempOfThermogen = thermocouple.readCelsius();
-
-    if (tempOfSeed > maxSeedTemp && kosticePostigleTemp == false)
-    {
-      kosticePostigleTemp = true;
-      // timeOfBurnerShutdown[numberOfShutdowns] = millis();
-      // numberOfShutdowns++;
-    }
-    else if (tempOfSeed < 35)
-    {
-      kosticePostigleTemp = false;
-    }
-
-    if (tempOfThermogen > maxTermTemp || kosticePostigleTemp == true)
-    {
-      TurnDownPlamenik();
-      termogenOverheated = true;
-      // Serial.println("hladi");
-    }
-    else if (kosticePostigleTemp == true && tempOfSeed <= MIN_SEED_TEMPERATURE && tempOfThermogen < maxTermTemp)
-    {
-      TurnOnPlamenik();
-      kosticePostigleTemp = false;
-
-      // Serial.println("grije");
-      //  } else if(kosticePostigleTemp == false && (tempOfSeed < 30 || tempOfThermogen < maxTermTemp - 15)){
-    }
-    else if (kosticePostigleTemp == false && termogenOverheated == true && tempOfThermogen < minTermTemp)
-    {
-
-      TurnOnPlamenik();
-      termogenOverheated = false;
-    }
-    timeForOtherStuff = millis();
-  }
-
-  if (mixerDelayTime != 0 && mixerDelayTime * 60 * 1000 < millis() - time && mixMode == MixMode::MIX)
-  {
-    if (startMixer == false)
-    {
-      MixerTurnCommand(true);
-      timeMixer = millis();
-    }
-
-    if (startMixer == true && startLeft == true && 5000 < millis() - timeMixer)
-    {
-      goLeft();
-    }
-    else if (startMixer == true && startRight == true && 5000 < millis() - timeMixer)
-    {
-      goRight();
-    }
-  }
-  else if (mixerDelayTime == 0 && MINIMUM_MIXER_SWITCH_DELAY < millis() - time && mixMode == MixMode::MIX)
-  {
-
-    if (startMixer == false)
-    {
-      MixerTurnCommand(true);
-      timeMixer = millis();
-    }
-
-    if (startMixer == true && startLeft == true && 5000 < millis() - timeMixer)
-    {
-      goLeft();
-    }
-    else if (startMixer == true && startRight == true && 5000 < millis() - timeMixer)
-    {
-      goRight();
-    }
-  }
+  TemperatureControl();
+  MixerControl();
+  MoveMixer();
 }
 
 void StopDrying()
 {
   digitalWrite(burnerRelayPin, LOW);
-  CurrentPage = 0;
+  currentPage = NextionScreen::START_SCREEN;
   MixerTurnCommand(false);
   digitalWrite(leftContactorPin, LOW);
   digitalWrite(rightContactorPin, LOW);
   digitalWrite(fanContactorPin, LOW);
   fanState = false;
-  firstTimeBurner = false;
-  startMixer = false;
-  firstTimeMixer = false;
-  startLeft = false;
-  startRight = false;
-  doneBooting = true;
-  stopDrying = false;
-  startDrying = false;
-  stopMoving = false;
+  mixerState = false;
+  operationMode = OperationMode::WAINTING_FOR_START;
   shutDownTemperatureReached = false;
-}
-
-/// @brief Check if mixer can move and moves it
-void MoveMixer()
-{
-  // turn on moveToLeftContactor when button is pressed
-  if (moveToLeft == true)
-  {
-    // shutdown moving left when mixer hits left end switch
-    if (digitalRead(leftEndSwitch) == LOW)
-      digitalWrite(leftContactorPin, LOW);
-    else if (500 <= (millis() - timeForStartMovingMixer) && digitalRead(leftEndSwitch) != LOW)
-      digitalWrite(leftContactorPin, HIGH);
-  }
-
-  // turn on moveToRightContactor when button is pressed
-  else if (moveToRight == true)
-  {
-    // shutdown moving right when mixer hits right end switch
-    if (digitalRead(rightEndSwitch) == LOW && moveToRight == true)
-      digitalWrite(rightContactorPin, LOW);
-    else if (500 <= (millis() - timeForStartMovingMixer) && digitalRead(rightEndSwitch) != LOW)
-      digitalWrite(rightContactorPin, HIGH);
-  }
 }
 
 void MixerEndSwitchCheck()
@@ -818,13 +821,10 @@ void MixerEndSwitchCheck()
   if (digitalRead(leftEndSwitch) == LOW)
   {
     digitalWrite(leftContactorPin, LOW);
-    moveToLeft = false;
-    startLeft = false;
-    time = millis();
-    timeChangeDirection = millis();
+    timeMixerHitEndSwitch = millis();
     if (moveButtonsPressed == false && mixerError == false)
     {
-      startRight = true;
+      // if mixer delay time is 0, mixer is always on, because there is no waiting time on the end
       if (mixerDelayTime > 0)
         MixerTurnCommand(false);
     }
@@ -832,17 +832,54 @@ void MixerEndSwitchCheck()
   if (digitalRead(rightEndSwitch) == LOW)
   {
     digitalWrite(rightContactorPin, LOW);
-    moveToRight = false;
-    startRight = false;
-    time = millis();
-    timeChangeDirection = millis();
+    timeMixerHitEndSwitch = millis();
     if (moveButtonsPressed == false && mixerError == false)
     {
-      startLeft = true;
+      // if mixer delay time is 0, mixer is always on, because there is no waiting time on the end
       if (mixerDelayTime > 0)
         MixerTurnCommand(false);
     }
   }
+}
+
+void WorkingHoursCalculation()
+{
+  if(TIME_INTERVAL_WORKING_HOURS_RAM > millis() - periodicStoreTimeTask)
+    return;
+  
+  if(burnerState == true)
+  {
+    sessionTimeBurnerOnSeconds += (millis() - timeBurnerOnTact) / 1000;
+    totalTimeBurnerOnSeconds += (millis() - timeBurnerOnTact) / 1000;
+    timeBurnerOnTact = millis();
+  }
+
+  if(operationMode == OperationMode::BOOTING || operationMode == OperationMode::DRYING)
+  {
+    sessionTimeDryingSeconds += (millis() - timeDryerOnTact) / 1000;
+    totalTimeDryingSeconds += (millis() - timeDryerOnTact) / 1000;
+    timeDryerOnTact = millis();
+  }
+
+  if(totalTimeBurnerOnSeconds >= totalTimeBurnerLastSave +  TIME_INTERVAL_WORKING_HOURS_EEPROM)
+  {
+    EEPROM.put(totalBurnerHoursAddress, totalTimeBurnerOnSeconds);
+    totalTimeBurnerLastSave = totalTimeBurnerOnSeconds;
+  }
+
+  if(totalTimeDryingSeconds >= totalTimeDryingLastSave + TIME_INTERVAL_WORKING_HOURS_EEPROM)
+  {
+    EEPROM.put(totalWorkingHoursAddress, totalTimeDryingSeconds);
+    totalTimeDryingLastSave = totalTimeDryingSeconds;
+  }
+
+  periodicStoreTimeTask = millis();
+}
+
+void ReadEEPROM()
+{
+  EEPROM.get(totalWorkingHoursAddress, totalTimeDryingSeconds);
+  EEPROM.get(totalBurnerHoursAddress, totalTimeBurnerOnSeconds);
 }
 
 void setup()
@@ -870,9 +907,10 @@ void setup()
   digitalWrite(mixerContactorPin, LOW);
   digitalWrite(SSerialTxControl, RS485Receive);
 
-  timeForOtherStuff = millis();
+  lastReadingUpdatingTime = millis();
   timeIntervalNextion = millis();
-  time = millis();
+  timeMixerHitEndSwitch = millis();
+  periodicStoreTimeTask = millis();
   heatMode = HeatMode::AUTO;
   mixMode = MixMode::MIX;
 
@@ -880,6 +918,7 @@ void setup()
   maxTermTemp = EEPROM.read(setMaxTermTempAddress);
   mixerDelayTime = EEPROM.read(mixerDelayTimeAddress) * 0.5;
   minTermTemp = EEPROM.read(setMinTermTempAddress);
+  ReadEEPROM();
 
   wdt_enable(WDTO_250MS);
 }
@@ -887,25 +926,27 @@ void setup()
 void loop()
 {
   // after start command is received, booting process begins
-  if (startDrying == true && stopDrying == false && doneBooting == false)
+  if (operationMode == OperationMode::BOOTING)
     BootUpProcedure();
 
   // procedure after boot is completed
-  else if (startDrying == true && stopDrying == false && doneBooting == true)
+  else if (operationMode == OperationMode::DRYING)
     DryingProcess();
 
   // shutdown procedure
-  else if (startDrying == false && stopDrying == true && doneBooting == false)
+  else if (operationMode == OperationMode::SHUTTING_DOWN)
     StopDrying();
 
   if (moveButtonsPressed == true && mixerError == false)
     MoveMixer();
 
-  if (CurrentPage == 1)
+  if (currentPage == 1)
     UpdateDryingPageParameters(false);
 
+  PeriodicTasks();
+
   MixerEndSwitchCheck();
-  MixerCheckState();
+  CheckMixerState();
   myNex.NextionListen();
   wdt_reset();
 }
