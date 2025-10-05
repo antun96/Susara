@@ -940,6 +940,9 @@ void setup()
 
   ReadEEPROM();
 
+  totalTimeBurnerLastSave = totalTimeBurnerOnSeconds;
+  totalTimeDryingLastSave = totalTimeDryingSeconds;
+
   wdt_enable(WDTO_250MS);
 }
 
@@ -964,6 +967,7 @@ void loop()
 
   MixerEndSwitchCheck();
   CheckMixerState();
+  WorkingHoursCalculation();
   myNex.NextionListen();
   wdt_reset();
 }
