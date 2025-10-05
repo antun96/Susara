@@ -51,7 +51,7 @@ int setMaxTermTempAddress = 2;
 int setMaxSeedTempAddress = 3;
 int mixerDelayTimeAddress = 4;
 int totalWorkingTimeAddress = 5;
-int totalBurnerTimeAddress = 8;
+int totalBurnerTimeAddress = 9;
 
 unsigned long timeMixerHitEndSwitch;
 unsigned long lastReadingUpdatingTime;
