@@ -151,6 +151,7 @@ unsigned long TIME_GAP_BETWEEN_TURNING_ON_SEQUENCES = 8000;
 bool fanState = false;
 bool mixerState = false;
 bool burnerState = false;
+bool lastBurnerState = false;
 bool termogenOverheated = false;
 double thermogenTemperature;
 double seedTemperature = 0;
@@ -182,6 +183,50 @@ char receivedChars[numChars]; // an array to store the received data
 bool newData = false;
 
 float dataNumber = 0;
+
+void WriteToEepromOnEnd()
+{
+  sessionTimeDryingSeconds += (millis() - timeDryerOnTact) / 1000;
+  totalTimeDryingSeconds += (millis() - timeDryerOnTact) / 1000;
+
+  EEPROM.put(totalBurnerTimeAddress, totalTimeBurnerOnSeconds);
+  totalTimeBurnerLastSave = totalTimeBurnerOnSeconds;
+
+  EEPROM.put(totalWorkingTimeAddress, totalTimeDryingSeconds);
+  totalTimeDryingLastSave = totalTimeDryingSeconds;
+}
+
+void TurnBurner(bool state)
+{
+  if (state)
+  {
+    timeBurnerOnTact = millis();
+    digitalWrite(burnerRelayPin, HIGH);
+    burnerState = true;
+    lastBurnerState = true;
+    if (currentPage == NextionScreen::DRYING_SCREEN)
+    {
+      if (heatMode == HeatMode::AUTO)
+      {
+        myNex.writeStr("b2.txt", "A");
+      }
+      myNex.writeNum("b2.bco", 61440);
+    }
+    return;
+  }
+
+  if (lastBurnerState == true)
+  {
+    sessionTimeBurnerOnSeconds += (millis() - timeBurnerOnTact) / 1000;
+    totalTimeBurnerOnSeconds += (millis() - timeBurnerOnTact) / 1000;
+    lastBurnerState = false;
+  }
+
+  digitalWrite(burnerRelayPin, LOW);
+  burnerState = false;
+  if (currentPage == NextionScreen::DRYING_SCREEN)
+    myNex.writeNum("b2.bco", 2300);
+}
 
 /// @brief Check if left end switch is pressed for safety, then move mixer to left
 void goLeft()
@@ -283,7 +328,7 @@ void CheckMixerState()
 {
   if (mixerState != true)
     return;
-  
+
   if (digitalRead(mixerImpulsePin) == HIGH && mixerImpulseLastState == false)
   {
     mixerImpulseLastState = true;
@@ -558,32 +603,6 @@ void trigger13()
     UpdateSettingsParameters();
 }
 
-/// @brief Turn off burner
-void TurnDownBurner()
-{
-  digitalWrite(burnerRelayPin, LOW);
-  totalTimeBurnerOnSeconds += (millis() - timeBurnerOnTact) / 1000;
-  sessionTimeBurnerOnSeconds += (millis() - timeBurnerOnTact) / 1000;
-  burnerState = false;
-  if (currentPage == NextionScreen::DRYING_SCREEN)
-    myNex.writeNum("b2.bco", 2300);
-}
-
-void TurnOnBurner()
-{
-  timeBurnerOnTact = millis();
-  digitalWrite(burnerRelayPin, HIGH);
-  burnerState = true;
-  if (currentPage == NextionScreen::DRYING_SCREEN)
-  {
-    if (heatMode == HeatMode::AUTO)
-    {
-      myNex.writeStr("b2.txt", "A");
-    }
-    myNex.writeNum("b2.bco", 61440);
-  }
-}
-
 /// @brief Change heating mode from AUTO to COOL and vice versa
 void trigger15()
 {
@@ -591,13 +610,13 @@ void trigger15()
   {
     heatMode = HeatMode::COOL;
     myNex.writeStr("b2.txt", "C");
-    TurnDownBurner();
+    TurnBurner(false);
   }
   else if (heatMode == HeatMode::COOL)
   {
     heatMode = HeatMode::AUTO;
     if (operationMode == OperationMode::DRYING && seedTemperature < maxSeedTemp && burnerState == false && termogenOverheated == false && thermogenTemperature < maxTermTemp)
-      TurnOnBurner();
+      TurnBurner(true);
 
     myNex.writeStr("b2.txt", "A");
   }
@@ -707,15 +726,15 @@ void PeriodicTasks()
 {
   if (updateScreenOnChange == true && SCREEN_CHANGE_DELAY_MILLIS < millis() - lastScreenChangeTime)
   {
-    if(currentPage == NextionScreen::DRYING_SCREEN)
+    if (currentPage == NextionScreen::DRYING_SCREEN)
       UpdateDryingPageParameters(true);
-    else if(currentPage == NextionScreen::SETTINGS_SCREEN)
+    else if (currentPage == NextionScreen::SETTINGS_SCREEN)
       UpdateSettingsParameters();
-    else if(currentPage == NextionScreen::SETTINGS_SCREEN_FROM_DRYING)
+    else if (currentPage == NextionScreen::SETTINGS_SCREEN_FROM_DRYING)
       UpdateSettingsParameters();
     else if (currentPage == NextionScreen::STAT_SCREEN)
       UpdateStatisticsParameters();
-    
+
     updateScreenOnChange = false;
   }
   if (READING_UPDATING_INTERVAL < millis() - lastReadingUpdatingTime)
@@ -729,16 +748,16 @@ void PeriodicTasks()
 
 void TemperatureControl()
 {
-  if(heatMode == HeatMode::COOL)
+  if (heatMode == HeatMode::COOL)
   {
     if (burnerState == true)
-      TurnDownBurner();
+      TurnBurner(false);
     return;
   }
   if (seedTemperature > maxSeedTemp && reachedMaxSeedTemp == false)
   {
     reachedMaxSeedTemp = true;
-    TurnDownBurner();
+    TurnBurner(false);
     return;
   }
   else if (seedTemperature < 35)
@@ -746,17 +765,17 @@ void TemperatureControl()
 
   if (thermogenTemperature > maxTermTemp)
   {
-    TurnDownBurner();
+    TurnBurner(false);
     termogenOverheated = true;
   }
   else if (reachedMaxSeedTemp == true && seedTemperature <= MIN_SEED_TEMPERATURE && thermogenTemperature < maxTermTemp)
   {
-    TurnOnBurner();
+    TurnBurner(true);
     reachedMaxSeedTemp = false;
   }
   else if (reachedMaxSeedTemp == false && termogenOverheated == true && thermogenTemperature < minTermTemp)
   {
-    TurnOnBurner();
+    TurnBurner(true);
     termogenOverheated = false;
   }
 }
@@ -773,8 +792,7 @@ void BootTurnOn()
     bootSequence = BootSequence::BURNER;
     break;
   case BootSequence::BURNER:
-    digitalWrite(burnerRelayPin, HIGH);
-    burnerState = true;
+    TurnBurner(true);
     timeOfLastTurnOnSequence = millis();
     bootSequence = BootSequence::MIXER;
     break;
@@ -784,9 +802,14 @@ void BootTurnOn()
     bootSequence = BootSequence::MIXER_MOVE;
     break;
   case BootSequence::MIXER_MOVE:
-    MoveMixer();
+    if(digitalRead(leftEndSwitch) != LOW)
+      goLeft();
+    else if (digitalRead(rightEndSwitch) != LOW)
+      goRight();
+
     timeOfLastTurnOnSequence = millis();
     bootSequence = BootSequence::DONE;
+    break;
   case BootSequence::DONE:
     operationMode = OperationMode::DRYING;
     break;
@@ -812,7 +835,8 @@ void DryingProcess()
 
 void StopDrying()
 {
-  digitalWrite(burnerRelayPin, LOW);
+  WriteToEepromOnEnd();
+  TurnBurner(false);
   currentPage = NextionScreen::START_SCREEN;
   MixerTurnCommand(false);
   digitalWrite(leftContactorPin, LOW);
@@ -820,8 +844,19 @@ void StopDrying()
   digitalWrite(fanContactorPin, LOW);
   fanState = false;
   mixerState = false;
+
   operationMode = OperationMode::WAINTING_FOR_START;
+  mixerMovingDirection = MovingDirection::NONE;
+  bootSequence = BootSequence::FAN;
+
   shutDownTemperatureReached = false;
+  reachedMaxSeedTemp = false;
+  termogenOverheated = false;
+
+  sessionTimeBurnerOnSeconds = 0;
+  sessionTimeDryingSeconds = 0;
+
+  WriteToEepromOnEnd();
 }
 
 void MixerEndSwitchCheck()
@@ -855,30 +890,30 @@ void MixerEndSwitchCheck()
 
 void WorkingHoursCalculation()
 {
-  if(TIME_INTERVAL_WORKING_HOURS_RAM > millis() - periodicStoreTimeTask)
+  if (TIME_INTERVAL_WORKING_HOURS_RAM > millis() - periodicStoreTimeTask)
     return;
-  
-  if(burnerState == true)
+
+  if (burnerState == true)
   {
     sessionTimeBurnerOnSeconds += (millis() - timeBurnerOnTact) / 1000;
     totalTimeBurnerOnSeconds += (millis() - timeBurnerOnTact) / 1000;
     timeBurnerOnTact = millis();
   }
 
-  if(operationMode == OperationMode::BOOTING || operationMode == OperationMode::DRYING)
+  if (operationMode == OperationMode::BOOTING || operationMode == OperationMode::DRYING)
   {
     sessionTimeDryingSeconds += (millis() - timeDryerOnTact) / 1000;
     totalTimeDryingSeconds += (millis() - timeDryerOnTact) / 1000;
     timeDryerOnTact = millis();
   }
 
-  if(totalTimeBurnerOnSeconds >= totalTimeBurnerLastSave +  TIME_INTERVAL_WORKING_HOURS_EEPROM)
+  if (totalTimeBurnerOnSeconds >= totalTimeBurnerLastSave + TIME_INTERVAL_WORKING_HOURS_EEPROM)
   {
     EEPROM.put(totalBurnerTimeAddress, totalTimeBurnerOnSeconds);
     totalTimeBurnerLastSave = totalTimeBurnerOnSeconds;
   }
 
-  if(totalTimeDryingSeconds >= totalTimeDryingLastSave + TIME_INTERVAL_WORKING_HOURS_EEPROM)
+  if (totalTimeDryingSeconds >= totalTimeDryingLastSave + TIME_INTERVAL_WORKING_HOURS_EEPROM)
   {
     EEPROM.put(totalWorkingTimeAddress, totalTimeDryingSeconds);
     totalTimeDryingLastSave = totalTimeDryingSeconds;
@@ -897,6 +932,7 @@ void WriteEEPROM()
 {
   totalTimeDryingSeconds = 0;
   totalTimeBurnerOnSeconds = 0;
+
   EEPROM.put(totalWorkingTimeAddress, totalTimeDryingSeconds);
   EEPROM.put(totalBurnerTimeAddress, totalTimeBurnerOnSeconds);
 }
@@ -939,6 +975,9 @@ void setup()
   minTermTemp = EEPROM.read(setMinTermTempAddress);
 
   ReadEEPROM();
+  
+  // uncomment this line to reset working hours in EEPROM
+  //WriteEEPROM(); 
 
   totalTimeBurnerLastSave = totalTimeBurnerOnSeconds;
   totalTimeDryingLastSave = totalTimeDryingSeconds;
