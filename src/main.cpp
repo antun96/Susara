@@ -152,7 +152,7 @@ bool fanState = false;
 bool mixerState = false;
 bool burnerState = false;
 bool lastBurnerState = false;
-bool termogenOverheated = false;
+bool thermogenOverheated = false;
 double thermogenTemperature;
 double seedTemperature = 0;
 bool reachedMaxSeedTemp = false;
@@ -585,7 +585,7 @@ void trigger11()
     UpdateSettingsParameters();
 }
 
-/// @brief Decrement maximum termogen temperature
+/// @brief Decrement maximum thermogen temperature
 void trigger12()
 {
   maxTermTemp = maxTermTemp - 1;
@@ -594,7 +594,7 @@ void trigger12()
     UpdateSettingsParameters();
 }
 
-/// @brief Increment maximum termogen temperature
+/// @brief Increment maximum thermogen temperature
 void trigger13()
 {
   maxTermTemp = maxTermTemp + 1;
@@ -615,7 +615,7 @@ void trigger15()
   else if (heatMode == HeatMode::COOL)
   {
     heatMode = HeatMode::AUTO;
-    if (operationMode == OperationMode::DRYING && seedTemperature < maxSeedTemp && burnerState == false && termogenOverheated == false && thermogenTemperature < maxTermTemp)
+    if (operationMode == OperationMode::DRYING && seedTemperature < maxSeedTemp && burnerState == false && thermogenOverheated == false && thermogenTemperature < maxTermTemp)
       TurnBurner(true);
 
     myNex.writeStr("b2.txt", "A");
@@ -641,7 +641,7 @@ void trigger17()
   mixerDelayTimeUpdate();
 }
 
-/// @brief Decrement minimum termogen temperature and save to EEPROM
+/// @brief Decrement minimum thermogen temperature and save to EEPROM
 void trigger18()
 {
   minTermTemp -= 1;
@@ -649,7 +649,7 @@ void trigger18()
   myNex.writeNum("n2.val", (int)minTermTemp);
 }
 
-/// @brief Increment minimum termogen temperature and save to EEPROM
+/// @brief Increment minimum thermogen temperature and save to EEPROM
 void trigger19()
 {
   minTermTemp += 1;
@@ -750,33 +750,35 @@ void TemperatureControl()
 {
   if (heatMode == HeatMode::COOL)
   {
-    if (burnerState == true)
+    if(burnerState)
       TurnBurner(false);
     return;
   }
-  if (seedTemperature > maxSeedTemp && reachedMaxSeedTemp == false)
+
+  if (seedTemperature > maxSeedTemp && reachedMaxSeedTemp == false && burnerState)
   {
     reachedMaxSeedTemp = true;
     TurnBurner(false);
     return;
   }
-  else if (seedTemperature < 35)
+  else if (seedTemperature < MIN_SEED_TEMPERATURE)
     reachedMaxSeedTemp = false;
 
-  if (thermogenTemperature > maxTermTemp)
+  if (thermogenTemperature > maxTermTemp && burnerState)
   {
     TurnBurner(false);
-    termogenOverheated = true;
+    thermogenOverheated = true;
   }
-  else if (reachedMaxSeedTemp == true && seedTemperature <= MIN_SEED_TEMPERATURE && thermogenTemperature < maxTermTemp)
+  else if (reachedMaxSeedTemp == true && seedTemperature <= MIN_SEED_TEMPERATURE && thermogenTemperature < minTermTemp)
   {
     TurnBurner(true);
     reachedMaxSeedTemp = false;
+    thermogenOverheated = false;
   }
-  else if (reachedMaxSeedTemp == false && termogenOverheated == true && thermogenTemperature < minTermTemp)
+  else if (reachedMaxSeedTemp == false && thermogenOverheated == true && thermogenTemperature < minTermTemp)
   {
     TurnBurner(true);
-    termogenOverheated = false;
+    thermogenOverheated = false;
   }
 }
 
@@ -851,7 +853,7 @@ void StopDrying()
 
   shutDownTemperatureReached = false;
   reachedMaxSeedTemp = false;
-  termogenOverheated = false;
+  thermogenOverheated = false;
 
   sessionTimeBurnerOnSeconds = 0;
   sessionTimeDryingSeconds = 0;
