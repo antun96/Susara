@@ -52,6 +52,7 @@ int setMaxSeedTempAddress = 3;
 int mixerDelayTimeAddress = 4;
 int totalWorkingTimeAddress = 5;
 int totalBurnerTimeAddress = 9;
+int drierTurnedOnCountAddress = 13;
 
 unsigned long timeMixerHitEndSwitch;
 unsigned long lastReadingUpdatingTime;
@@ -484,6 +485,7 @@ void trigger1()
 {
   operationMode = OperationMode::BOOTING;
   currentPage = NextionScreen::DRYING_SCREEN;
+  EEPROM.update(drierTurnedOnCountAddress, 1);
   updateScreenOnChange = true;
   lastScreenChangeTime = millis();
 }
@@ -494,6 +496,7 @@ void trigger8()
   currentPage = NextionScreen::START_SCREEN;
   totalTimeDryingSeconds += (millis() - timeDryerOnTact) / 1000;
   sessionTimeDryingSeconds += (millis() - timeDryerOnTact) / 1000;
+  EEPROM.update(drierTurnedOnCountAddress, 0);
   operationMode = OperationMode::SHUTTING_DOWN;
 }
 
@@ -805,9 +808,15 @@ void BootTurnOn()
     break;
   case BootSequence::MIXER_MOVE:
     if(digitalRead(leftEndSwitch) != LOW)
+    {
+      mixerMovingDirection = MovingDirection::LEFT;
       goLeft();
+    }
     else if (digitalRead(rightEndSwitch) != LOW)
+    {
+      mixerMovingDirection = MovingDirection::RIGHT;
       goRight();
+    }
 
     timeOfLastTurnOnSequence = millis();
     bootSequence = BootSequence::DONE;
@@ -975,6 +984,11 @@ void setup()
   maxTermTemp = EEPROM.read(setMaxTermTempAddress);
   mixerDelayTime = EEPROM.read(mixerDelayTimeAddress) * 0.5;
   minTermTemp = EEPROM.read(setMinTermTempAddress);
+
+  if(EEPROM.read(drierTurnedOnCountAddress) != 0)
+    operationMode = OperationMode::BOOTING;
+  else
+    operationMode = OperationMode::WAINTING_FOR_START;
 
   ReadEEPROM();
   
