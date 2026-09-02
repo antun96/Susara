@@ -751,6 +751,7 @@ void PeriodicTasks()
 
 void TemperatureControl()
 {
+  // if cooling mode is selected, turn off burner and return
   if (heatMode == HeatMode::COOL)
   {
     if(burnerState)
@@ -758,30 +759,52 @@ void TemperatureControl()
     return;
   }
 
-  if (seedTemperature > maxSeedTemp && reachedMaxSeedTemp == false && burnerState)
+  // max seed temperature is reached, turn off burner and raise flag to cool down seeds
+  if(seedTemperature > maxSeedTemp && !reachedMaxSeedTemp)
   {
     reachedMaxSeedTemp = true;
     TurnBurner(false);
     return;
   }
-  else if (seedTemperature < MIN_SEED_TEMPERATURE)
-    reachedMaxSeedTemp = false;
 
-  if (thermogenTemperature > maxTermTemp && burnerState)
+  // if thermogen temperature is too high, turn off burner and raise flag to cool down thermogen
+  if(thermogenTemperature > maxTermTemp && !thermogenOverheated)
   {
-    TurnBurner(false);
     thermogenOverheated = true;
+    TurnBurner(false);
+    return;
   }
-  else if (reachedMaxSeedTemp == true && seedTemperature <= MIN_SEED_TEMPERATURE && thermogenTemperature < minTermTemp)
+
+  // if max seed temperature is reached, wait for seeds to cool down before turning on burner again
+  if(reachedMaxSeedTemp)
+  {
+    if(seedTemperature <= MIN_SEED_TEMPERATURE && thermogenTemperature <= minTermTemp)
+    {
+      reachedMaxSeedTemp = false;
+      thermogenOverheated = false;
+      TurnBurner(true);
+    }
+
+    return;
+  }
+
+  // if max thermogen temperature is reached, wait for thermogen to cool down before turning on burner again
+  if(thermogenOverheated)
+  {
+    if(thermogenTemperature < minTermTemp)
+    {
+      thermogenOverheated = false;
+      TurnBurner(true);
+    }
+
+    return;
+  }
+
+  // Normal startup
+  // if both seed and thermogen temperatures are low enough, turn on burner
+  if(!burnerState &&seedTemperature <= MIN_SEED_TEMPERATURE && thermogenTemperature <= minTermTemp)
   {
     TurnBurner(true);
-    reachedMaxSeedTemp = false;
-    thermogenOverheated = false;
-  }
-  else if (reachedMaxSeedTemp == false && thermogenOverheated == true && thermogenTemperature < minTermTemp)
-  {
-    TurnBurner(true);
-    thermogenOverheated = false;
   }
 }
 
@@ -789,43 +812,53 @@ void BootTurnOn()
 {
   switch (bootSequence)
   {
-  case BootSequence::FAN:
-    digitalWrite(fanContactorPin, HIGH);
-    fanState = true;
-    timeOfLastTurnOnSequence = millis();
-    timeDryerOnTact = millis();
-    bootSequence = BootSequence::BURNER;
-    break;
-  case BootSequence::BURNER:
-    TurnBurner(true);
-    timeOfLastTurnOnSequence = millis();
-    bootSequence = BootSequence::MIXER;
-    break;
-  case BootSequence::MIXER:
-    MixerTurnCommand(true);
-    timeOfLastTurnOnSequence = millis();
-    bootSequence = BootSequence::MIXER_MOVE;
-    break;
-  case BootSequence::MIXER_MOVE:
-    if(digitalRead(leftEndSwitch) != LOW)
-    {
-      mixerMovingDirection = MovingDirection::LEFT;
-      goLeft();
-    }
-    else if (digitalRead(rightEndSwitch) != LOW)
-    {
-      mixerMovingDirection = MovingDirection::RIGHT;
-      goRight();
-    }
+    case BootSequence::FAN:
+      digitalWrite(fanContactorPin, HIGH);
+      fanState = true;
+      timeOfLastTurnOnSequence = millis();
+      timeDryerOnTact = millis();
+      bootSequence = BootSequence::BURNER;
+      break;
+      
+    case BootSequence::BURNER:
+      TurnBurner(true);
+      timeOfLastTurnOnSequence = millis();
+      bootSequence = BootSequence::MIXER;
+      break;
 
-    timeOfLastTurnOnSequence = millis();
-    bootSequence = BootSequence::DONE;
-    break;
-  case BootSequence::DONE:
-    operationMode = OperationMode::DRYING;
-    break;
-  default:
-    break;
+    case BootSequence::MIXER:
+      timeOfLastTurnOnSequence = millis();
+      bootSequence = BootSequence::MIXER_MOVE;
+      if (mixerMode != MixMode::MIX)
+        break;
+
+      MixerTurnCommand(true);
+      break;
+
+    case BootSequence::MIXER_MOVE:
+      timeOfLastTurnOnSequence = millis();
+      bootSequence = BootSequence::DONE;
+      if (mixerMode != MixMode::MIX)
+        break;
+
+      if(digitalRead(leftEndSwitch) != LOW)
+      {
+        mixerMovingDirection = MovingDirection::LEFT;
+        goLeft();
+      }
+      else if (digitalRead(rightEndSwitch) != LOW)
+      {
+        mixerMovingDirection = MovingDirection::RIGHT;
+        goRight();
+      }
+      break;
+
+    case BootSequence::DONE:
+      operationMode = OperationMode::DRYING;
+      break;
+
+    default:
+      break;
   }
 }
 
@@ -870,7 +903,7 @@ void StopDrying()
   WriteToEepromOnEnd();
 }
 
-void MixerEndSwitchCheck()
+void CheckMixerEndSwitch()
 {
   if (digitalRead(leftEndSwitch) == LOW && mixerMovingDirection == MovingDirection::LEFT)
   {
@@ -1020,7 +1053,7 @@ void loop()
 
   PeriodicTasks();
 
-  MixerEndSwitchCheck();
+  CheckMixerEndSwitch();
   CheckMixerState();
   WorkingHoursCalculation();
   myNex.NextionListen();
