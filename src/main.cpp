@@ -754,13 +754,13 @@ void TemperatureControl()
   // if cooling mode is selected, turn off burner and return
   if (heatMode == HeatMode::COOL)
   {
-    if(burnerState)
+    if (burnerState)
       TurnBurner(false);
     return;
   }
 
   // max seed temperature is reached, turn off burner and raise flag to cool down seeds
-  if(seedTemperature > maxSeedTemp && !reachedMaxSeedTemp)
+  if (seedTemperature > maxSeedTemp && !reachedMaxSeedTemp)
   {
     reachedMaxSeedTemp = true;
     TurnBurner(false);
@@ -768,7 +768,7 @@ void TemperatureControl()
   }
 
   // if thermogen temperature is too high, turn off burner and raise flag to cool down thermogen
-  if(thermogenTemperature > maxTermTemp && !thermogenOverheated)
+  if (thermogenTemperature > maxTermTemp && !thermogenOverheated)
   {
     thermogenOverheated = true;
     TurnBurner(false);
@@ -776,9 +776,9 @@ void TemperatureControl()
   }
 
   // if max seed temperature is reached, wait for seeds to cool down before turning on burner again
-  if(reachedMaxSeedTemp)
+  if (reachedMaxSeedTemp)
   {
-    if(seedTemperature <= MIN_SEED_TEMPERATURE && thermogenTemperature <= minTermTemp)
+    if (seedTemperature <= MIN_SEED_TEMPERATURE && thermogenTemperature <= minTermTemp)
     {
       reachedMaxSeedTemp = false;
       thermogenOverheated = false;
@@ -789,9 +789,9 @@ void TemperatureControl()
   }
 
   // if max thermogen temperature is reached, wait for thermogen to cool down before turning on burner again
-  if(thermogenOverheated)
+  if (thermogenOverheated)
   {
-    if(thermogenTemperature < minTermTemp)
+    if (thermogenTemperature < minTermTemp)
     {
       thermogenOverheated = false;
       TurnBurner(true);
@@ -802,7 +802,7 @@ void TemperatureControl()
 
   // Normal startup
   // if both seed and thermogen temperatures are low enough, turn on burner
-  if(!burnerState &&seedTemperature <= MIN_SEED_TEMPERATURE && thermogenTemperature <= minTermTemp)
+  if (!burnerState && seedTemperature <= MIN_SEED_TEMPERATURE && thermogenTemperature <= minTermTemp)
   {
     TurnBurner(true);
   }
@@ -812,53 +812,56 @@ void BootTurnOn()
 {
   switch (bootSequence)
   {
-    case BootSequence::FAN:
-      digitalWrite(fanContactorPin, HIGH);
-      fanState = true;
-      timeOfLastTurnOnSequence = millis();
-      timeDryerOnTact = millis();
-      bootSequence = BootSequence::BURNER;
+  case BootSequence::FAN:
+    digitalWrite(fanContactorPin, HIGH);
+    fanState = true;
+    timeOfLastTurnOnSequence = millis();
+    timeDryerOnTact = millis();
+    bootSequence = BootSequence::BURNER;
+    break;
+
+  case BootSequence::BURNER:
+    timeOfLastTurnOnSequence = millis();
+    bootSequence = BootSequence::MIXER;
+    if (heatMode == HeatMode::COOL)
       break;
       
-    case BootSequence::BURNER:
-      TurnBurner(true);
-      timeOfLastTurnOnSequence = millis();
-      bootSequence = BootSequence::MIXER;
+    TurnBurner(true);
+    break;
+
+  case BootSequence::MIXER:
+    timeOfLastTurnOnSequence = millis();
+    bootSequence = BootSequence::MIXER_MOVE;
+    if (mixerMode != MixMode::MIX)
       break;
 
-    case BootSequence::MIXER:
-      timeOfLastTurnOnSequence = millis();
-      bootSequence = BootSequence::MIXER_MOVE;
-      if (mixerMode != MixMode::MIX)
-        break;
+    MixerTurnCommand(true);
+    break;
 
-      MixerTurnCommand(true);
+  case BootSequence::MIXER_MOVE:
+    timeOfLastTurnOnSequence = millis();
+    bootSequence = BootSequence::DONE;
+    if (mixerMode != MixMode::MIX)
       break;
 
-    case BootSequence::MIXER_MOVE:
-      timeOfLastTurnOnSequence = millis();
-      bootSequence = BootSequence::DONE;
-      if (mixerMode != MixMode::MIX)
-        break;
+    if (digitalRead(leftEndSwitch) != LOW)
+    {
+      mixerMovingDirection = MovingDirection::LEFT;
+      goLeft();
+    }
+    else if (digitalRead(rightEndSwitch) != LOW)
+    {
+      mixerMovingDirection = MovingDirection::RIGHT;
+      goRight();
+    }
+    break;
 
-      if(digitalRead(leftEndSwitch) != LOW)
-      {
-        mixerMovingDirection = MovingDirection::LEFT;
-        goLeft();
-      }
-      else if (digitalRead(rightEndSwitch) != LOW)
-      {
-        mixerMovingDirection = MovingDirection::RIGHT;
-        goRight();
-      }
-      break;
+  case BootSequence::DONE:
+    operationMode = OperationMode::DRYING;
+    break;
 
-    case BootSequence::DONE:
-      operationMode = OperationMode::DRYING;
-      break;
-
-    default:
-      break;
+  default:
+    break;
   }
 }
 
@@ -1018,15 +1021,15 @@ void setup()
   mixerDelayTime = EEPROM.read(mixerDelayTimeAddress) * 0.5;
   minTermTemp = EEPROM.read(setMinTermTempAddress);
 
-  if(EEPROM.read(drierTurnedOnCountAddress) != 0)
+  if (EEPROM.read(drierTurnedOnCountAddress) != 0)
     operationMode = OperationMode::BOOTING;
   else
     operationMode = OperationMode::WAINTING_FOR_START;
 
   ReadEEPROM();
-  
+
   // uncomment this line to reset working hours in EEPROM
-  //WriteEEPROM(); 
+  // WriteEEPROM();
 
   totalTimeBurnerLastSave = totalTimeBurnerOnSeconds;
   totalTimeDryingLastSave = totalTimeDryingSeconds;
