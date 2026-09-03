@@ -825,14 +825,14 @@ void BootTurnOn()
     bootSequence = BootSequence::MIXER;
     if (heatMode == HeatMode::COOL)
       break;
-      
+
     TurnBurner(true);
     break;
 
   case BootSequence::MIXER:
     timeOfLastTurnOnSequence = millis();
     bootSequence = BootSequence::MIXER_MOVE;
-    if (mixerMode != MixMode::MIX)
+    if (mixMode != MixMode::MIX)
       break;
 
     MixerTurnCommand(true);
@@ -841,7 +841,7 @@ void BootTurnOn()
   case BootSequence::MIXER_MOVE:
     timeOfLastTurnOnSequence = millis();
     bootSequence = BootSequence::DONE;
-    if (mixerMode != MixMode::MIX)
+    if (mixMode != MixMode::MIX)
       break;
 
     if (digitalRead(leftEndSwitch) != LOW)
