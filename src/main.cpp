@@ -199,6 +199,9 @@ void WriteToEepromOnEnd()
 
 void TurnBurner(bool state)
 {
+  if (state == burnerState)
+    return;
+
   if (state)
   {
     timeBurnerOnTact = millis();
@@ -494,8 +497,6 @@ void trigger1()
 void trigger8()
 {
   currentPage = NextionScreen::START_SCREEN;
-  totalTimeDryingSeconds += (millis() - timeDryerOnTact) / 1000;
-  sessionTimeDryingSeconds += (millis() - timeDryerOnTact) / 1000;
   EEPROM.update(drierTurnedOnCountAddress, 0);
   operationMode = OperationMode::SHUTTING_DOWN;
 }
@@ -618,9 +619,6 @@ void trigger15()
   else if (heatMode == HeatMode::COOL)
   {
     heatMode = HeatMode::AUTO;
-    if (operationMode == OperationMode::DRYING && seedTemperature < maxSeedTemp && burnerState == false && thermogenOverheated == false && thermogenTemperature < maxTermTemp)
-      TurnBurner(true);
-
     myNex.writeStr("b2.txt", "A");
   }
 }
@@ -647,7 +645,8 @@ void trigger17()
 /// @brief Decrement minimum thermogen temperature and save to EEPROM
 void trigger18()
 {
-  minTermTemp -= 1;
+  if (minTermTemp > 15)
+        minTermTemp--;
   EEPROM.update(setMinTermTempAddress, minTermTemp);
   myNex.writeNum("n2.val", (int)minTermTemp);
 }
@@ -655,7 +654,8 @@ void trigger18()
 /// @brief Increment minimum thermogen temperature and save to EEPROM
 void trigger19()
 {
-  minTermTemp += 1;
+  if (minTermTemp < maxTermTemp - 5)
+        minTermTemp++;
   EEPROM.update(setMinTermTempAddress, minTermTemp);
   myNex.writeNum("n2.val", (int)minTermTemp);
 }
@@ -882,7 +882,6 @@ void DryingProcess()
 
 void StopDrying()
 {
-  WriteToEepromOnEnd();
   TurnBurner(false);
   currentPage = NextionScreen::START_SCREEN;
   MixerTurnCommand(false);
